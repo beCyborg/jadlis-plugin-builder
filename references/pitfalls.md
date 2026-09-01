@@ -45,3 +45,7 @@ Third-party and local marketplaces have auto-update disabled by default (discove
 ## 10. hooks.json needs the outer wrapper
 
 `hooks/hooks.json` must be `{"hooks": {...}}` — without the wrapper the hooks silently never register. Quote `"${CLAUDE_PLUGIN_ROOT}"` in shell-form commands (breaks on spaces otherwise); prefer exec-form with `args`. A hook matching the plugin's own MCP server must use the scoped name (`mcp__plugin_<plugin>_<server>__<tool>`) — a bare server name never fires (plugins-reference.md §Hooks).
+
+## 11. Official CI action: false I8 warning on root-as-plugin repos
+
+The `validate-plugins` action's invariant I8 warns `vendored source './' has no .claude-plugin/plugin.json` on repos whose marketplace entry uses `source: "./"` — it resolves the manifest relative to the source dir with a nested-layout assumption and does not recognize the root-as-plugin pattern (reproduced on two repos, 2026-09-01; CI still passes). Ignore the warning, or move to `plugins/<name>/` layout. Also expected on a workflow's first run: `git diff failed … treating ALL entries as changed` (no base commit — the action validates everything, which is stricter, not weaker).
