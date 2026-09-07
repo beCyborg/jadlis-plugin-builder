@@ -1,0 +1,13 @@
+name: CI
+on:
+  pull_request: {}
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  ci:
+    uses: beCyborg/jadlis-start/.github/workflows/plugin-ci.yml@main
+    with:
+      mode: plugin
+    secrets: inherit
