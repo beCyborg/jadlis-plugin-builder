@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
-  "name": "plugin-creator",
-  "version": "1.1.0",
+  "name": "jadlis-plugin-creator",
+  "version": "2.0.0",
   "description": "Assemble, validate, release, and migrate Claude Code plugins and plugin marketplaces: scaffold repos to the house GitHub standard, run offline preflight plus claude plugin validate, ship releases (version bump, changelog, tag, GitHub Release, recipient update path), and migrate legacy repos into a consolidated marketplace.",
   "author": {
     "name": "Be Cyborg"

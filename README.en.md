@@ -7,8 +7,8 @@ version in exactly one place, changelog, tag, release and an install into a clea
 the recipient gets the line they have to run on their side.
 
 ```
-claude plugin marketplace add https://github.com/beCyborg/jadlis-start.git
-claude plugin install plugin-creator@jadlis
+claude plugin marketplace add https://github.com/beCyborg/jadlis-hub
+claude plugin install jadlis-plugin-creator@jadlis
 ```
 
 No keys are needed; what is needed is git, an authenticated `gh` and `claude plugin` itself — the
@@ -63,11 +63,11 @@ errors and warnings, with the fix on each one.
 **a) Text to paste to an agent.** Copy the whole thing into a Claude Code chat:
 
 ```
-You are the installer. Install the plugin plugin-creator from the jadlis marketplace on this Mac.
+You are the installer. Install the plugin jadlis-plugin-creator from the jadlis marketplace on this Mac.
 Run exactly these commands, verbatim, shortening nothing:
-1. claude plugin marketplace add https://github.com/beCyborg/jadlis-start.git
-2. claude plugin install plugin-creator@jadlis
-3. claude plugin list — show me the line about plugin-creator and its version.
+1. claude plugin marketplace add https://github.com/beCyborg/jadlis-hub
+2. claude plugin install jadlis-plugin-creator@jadlis
+3. claude plugin list — show me the line about jadlis-plugin-creator and its version.
 This plugin asks for no keys. Check separately and tell me whether this machine has git,
 python3 and an authenticated gh (gh auth status): without them the tag, release and
 verification-install steps will not go through.
@@ -79,13 +79,13 @@ If a command returns an error, stop, show me the output, and do not move to the 
 **b) Commands by hand.**
 
 ```
-claude plugin marketplace add https://github.com/beCyborg/jadlis-start.git
-claude plugin install plugin-creator@jadlis
+claude plugin marketplace add https://github.com/beCyborg/jadlis-hub
+claude plugin install jadlis-plugin-creator@jadlis
 claude plugin list
 ```
 
 The first command installs nothing — it adds the marketplace. Only the second one installs, and one
-line removes it: `claude plugin uninstall plugin-creator@jadlis --keep-data`.
+line removes it: `claude plugin uninstall jadlis-plugin-creator@jadlis --keep-data`.
 
 **c) The short command.** Open Claude Code in the dev clone of your repo and type:
 
@@ -131,12 +131,12 @@ first command you keep the version you installed.
 
 ```
 claude plugin marketplace update jadlis
-claude plugin update plugin-creator@jadlis
+claude plugin update jadlis-plugin-creator@jadlis
 claude plugin list
 ```
 
 Reinstall, if something ended up crooked:
 
 ```
-claude plugin uninstall plugin-creator@jadlis --keep-data && claude plugin install plugin-creator@jadlis
+claude plugin uninstall jadlis-plugin-creator@jadlis --keep-data && claude plugin install jadlis-plugin-creator@jadlis
 ```

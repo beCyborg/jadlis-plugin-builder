@@ -7,8 +7,8 @@
 строка, которую он выполняет у себя.
 
 ```
-claude plugin marketplace add https://github.com/beCyborg/jadlis-start.git
-claude plugin install plugin-creator@jadlis
+claude plugin marketplace add https://github.com/beCyborg/jadlis-hub
+claude plugin install jadlis-plugin-creator@jadlis
 ```
 
 Ключи не нужны; нужны git, авторизованный `gh` и сам `claude plugin` — на них держатся тег, релиз и
@@ -59,11 +59,11 @@ validate --strict`, бамп версии с changelog, тег и релиз, п
 **а) Текст для вставки агенту.** Скопируй целиком в чат Claude Code:
 
 ```
-Ты — установщик. Поставь на этот Mac плагин plugin-creator из маркетплейса jadlis.
+Ты — установщик. Поставь на этот Mac плагин jadlis-plugin-creator из маркетплейса jadlis.
 Выполни ровно эти команды, дословно, ничего не сокращая:
-1. claude plugin marketplace add https://github.com/beCyborg/jadlis-start.git
-2. claude plugin install plugin-creator@jadlis
-3. claude plugin list — покажи мне строку про plugin-creator и его версию.
+1. claude plugin marketplace add https://github.com/beCyborg/jadlis-hub
+2. claude plugin install jadlis-plugin-creator@jadlis
+3. claude plugin list — покажи мне строку про jadlis-plugin-creator и его версию.
 Ключей этот плагин не просит. Проверь и скажи мне отдельно, есть ли на машине git,
 python3 и gh с авторизацией (gh auth status): без них шаги тега, релиза и проверочной
 установки не пройдут.
@@ -75,13 +75,13 @@ python3 и gh с авторизацией (gh auth status): без них шаг
 **б) Команды руками.**
 
 ```
-claude plugin marketplace add https://github.com/beCyborg/jadlis-start.git
-claude plugin install plugin-creator@jadlis
+claude plugin marketplace add https://github.com/beCyborg/jadlis-hub
+claude plugin install jadlis-plugin-creator@jadlis
 claude plugin list
 ```
 
 Первая команда ничего не ставит — она добавляет маркетплейс. Ставит только вторая, и снимается
-она одной строкой: `claude plugin uninstall plugin-creator@jadlis --keep-data`.
+она одной строкой: `claude plugin uninstall jadlis-plugin-creator@jadlis --keep-data`.
 
 **в) Короткая команда.** Открой Claude Code в рабочем клоне своего репозитория и набери:
 
@@ -125,12 +125,12 @@ claude plugin list
 
 ```
 claude plugin marketplace update jadlis
-claude plugin update plugin-creator@jadlis
+claude plugin update jadlis-plugin-creator@jadlis
 claude plugin list
 ```
 
 Переустановка, если что-то встало криво:
 
 ```
-claude plugin uninstall plugin-creator@jadlis --keep-data && claude plugin install plugin-creator@jadlis
+claude plugin uninstall jadlis-plugin-creator@jadlis --keep-data && claude plugin install jadlis-plugin-creator@jadlis
 ```
