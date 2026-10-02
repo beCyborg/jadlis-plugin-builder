@@ -3,3 +3,4 @@ __pycache__/
 *.skill
 .DS_Store
 .pytest_cache/
+evals/results/
