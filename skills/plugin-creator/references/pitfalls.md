@@ -1,6 +1,6 @@
 # Pitfalls — field-tested traps in plugin authoring and distribution
 
-> Last audited against Claude Code docs: 2026-09-01 (~v2.1.251, mirror b290425)
+> Last audited against Claude Code docs: 2026-10-02 (v2.1.287, mirror 934d35c9)
 
 Battle-tested lessons from operating 10+ marketplaces (beCyborg, 2026-07..09). Each entry: symptom → cause → rule.
 
@@ -12,7 +12,7 @@ The background marketplace refresh hard-resets `~/.claude/plugins/marketplaces/<
 
 ## 2. `metadata.pluginRoot` — version-gated
 
-Before v2.1.239 the runtime did not prepend `pluginRoot` to bare source names (`Source path does not exist`) even though docs promised it; the workaround was full `"./plugins/<name>"` paths. Fixed in v2.1.239 (changelog): bare names now resolve under `pluginRoot`. Caveats that remain: a bare name containing `/` is not treated as a pluginRoot bareword, and org-synced distribution rejects barewords entirely (plugin-marketplaces.md §Organization settings). Full relative paths (`"./plugins/<name>"`) work everywhere — prefer them when the repo must serve pre-2.1.239 clients.
+Before v2.1.239 the runtime did not prepend `pluginRoot` to bare source names (`Source path does not exist`) even though docs promised it; the workaround was full `"./plugins/<name>"` paths. Fixed in v2.1.239 (changelog): bare names now resolve under `pluginRoot`. Caveats that remain: a bare name containing `/` is not treated as a pluginRoot bareword, and org-synced distribution rejects barewords entirely (`plugins__host-marketplace.md §Distribute through organization settings`). Full relative paths (`"./plugins/<name>"`) work everywhere — prefer them when the repo must serve pre-2.1.239 clients.
 
 ## 3. `--strict` vs commit-SHA versioning
 
@@ -40,12 +40,20 @@ The env var only affects `owner/repo` shorthands (which default to SSH). A full 
 
 ## 9. Auto-update is opt-in for recipients
 
-Third-party and local marketplaces have auto-update disabled by default (discover-plugins.md). "Every push reaches users automatically" is false: recipients either run `/plugin update <plugin>@<marketplace>` or enable auto-update once in `/plugin` → Marketplaces. Put this in every marketplace README. Also: bumping `version` is what makes an update visible at all (version = cache key; see release-checklist.md).
+Third-party and local marketplaces have auto-update disabled by default (`plugins__install.md §Keep plugins updated`). "Every push reaches users automatically" is false: recipients either run `/plugin update <plugin>@<marketplace>` or enable auto-update once in `/plugin` → Marketplaces. Put this in every marketplace README. Also: bumping `version` is what makes an update visible at all (version = cache key; see release-checklist.md).
 
-## 10. hooks.json needs the outer wrapper
+## 10. hooks.json needs the outer wrapper — unless it is a mod
 
-`hooks/hooks.json` must be `{"hooks": {...}}` — without the wrapper the hooks silently never register. Quote `"${CLAUDE_PLUGIN_ROOT}"` in shell-form commands (breaks on spaces otherwise); prefer exec-form with `args`. A hook matching the plugin's own MCP server must use the scoped name (`mcp__plugin_<plugin>_<server>__<tool>`) — a bare server name never fires (plugins-reference.md §Hooks).
+Classic hooks in `hooks/hooks.json` must be `{"hooks": {...}}` — without the wrapper the hooks silently never register. A mod's `hooks.json` is `{"modules": ["./register.js"]}` (optionally plus `hooks`) and needs no wrapper; preflight before 2.1.0 wrongly failed it. Quote `"${CLAUDE_PLUGIN_ROOT}"` in shell-form commands (breaks on spaces otherwise); prefer exec-form with `args`. A hook matching the plugin's own MCP server must use the scoped name (`mcp__plugin_<plugin>_<server>__<tool>`) — a bare server name never fires (`plugins__components.md §MCP servers`).
 
 ## 11. Official CI action: false I8 warning on root-as-plugin repos
 
 The `validate-plugins` action's invariant I8 warns `vendored source './' has no .claude-plugin/plugin.json` on repos whose marketplace entry uses `source: "./"` — it resolves the manifest relative to the source dir with a nested-layout assumption and does not recognize the root-as-plugin pattern (reproduced on two repos, 2026-09-01; CI still passes). Ignore the warning, or move to `plugins/<name>/` layout. Also expected on a workflow's first run: `git diff failed … treating ALL entries as changed` (no base commit — the action validates everything, which is stricter, not weaker).
+
+## 12. Mods: fail-open, unsandboxed, version-gated
+
+A mod (`mods.md`) runs inside Claude Code with the user's rights: no sandbox, never install one unread. A hook that throws or times out before `next` is skipped and the event proceeds — a guard needs a `.catch` returning `{ deny }` to fail closed. Mods need Claude Code ≥ 2.1.287. Known on 2.1.287 from the owner's probes (not in the docs): `skill.prompt` is not delivered (anthropics/claude-code#96831); a `tool.call` hook on Bash breaks `isolation: "worktree"` subagents (#92533). A mod shipped from a GitHub/git/URL/npm marketplace counts as the user's, never as the organization's (`plugins__mods__admin.md`).
+
+## 13. Two plugins on one MCP URL — one silently vanishes
+
+Plugin MCP servers are deduplicated by endpoint, not name (`mcp.md §Scope hierarchy and precedence`): a plugin server with the same URL or command as an enabled user/project/local server is not connected, and its tool names disappear with it. Observed on 2026-10-02 (not documented): the same happens between two plugins — which one survives was not established. Give every shared daemon one owner key; preflight errors on a URL repeated inside one marketplace. Patterns: `mcp-patterns.md`.

@@ -1,14 +1,36 @@
 # Plugin Components Reference
 
-> Last audited against Claude Code docs: 2026-09-01 (~v2.1.251, mirror b290425)
+> Last audited against Claude Code docs: 2026-10-02 (v2.1.287, mirror 934d35c9)
 
-Every component type a plugin can ship, the constraints that break plugins in practice, and how files are resolved on disk. Manifest fields and path variables: see `manifest-reference.md`.
+Every component type a plugin can ship, the constraints that break plugins in practice, and how files are resolved on disk. Manifest fields and path variables: see `manifest-reference.md`. Mods: `mods.md`. Shared-daemon MCP patterns: `mcp-patterns.md`.
+
+---
+
+## 0. Which component when
+
+| Component | Pick it when | Limits / source |
+|---|---|---|
+| Skill | Instructions, reference or a workflow Claude interprets; a `/name` command; you keep pasting the same instructions | `features-overview.md`; `plugins__mods__overview.md §Compare mods, settings hooks, skills, and MCP servers` |
+| Agent (subagent) | Context isolation; parallel or specialised workers | Plugin agents ignore `permissionMode`, `hooks`, `mcpServers`, `initialPrompt` (§2) |
+| Command (`commands/`) | Only to carry over old `.claude/commands/` files or a short inline command in the manifest; new work → skill | `plugins__components.md §Commands` |
+| Classic hook (`hooks/hooks.json` → `hooks`) | A rule must hold every time, deterministically: block / allow / log with a script | Stable API, runs outside Claude Code's process |
+| Mod (`hooks/hooks.json` → `modules`) | A pane, band or status in the UI; a `/command` that runs with no model turn; rewriting a tool call, prompt, turn or request; state shared between hooks | Claude Code ≥ 2.1.287; fail-open unless `.catch`; not sandboxed — `mods.md` |
+| MCP server | Claude needs tools or data from an external system | Remote `https://` also reaches claude.ai/Cowork; shared daemon → `mcp-patterns.md` |
+| Output style | A role, tone or response format for the whole session, switchable | `plugins__components.md §Themes and output styles` |
+| LSP server | Navigation and diagnostics for a typed language — check for an official plugin first | `plugins__components.md §LSP servers` |
+| Monitor | A background command whose stdout should wake Claude (a log, a status) | Interactive sessions only; no `${user_config}`; not on Bedrock / Agent Platform / Foundry (§6) |
+| Channel | An external system pushes messages into an open session (chat bridge) | Research preview; bound to one of the plugin's MCP servers (`manifest-reference.md §8`) |
+| Workflow | Work larger than a few subagents, or with cross-checking | `workflows/`, §8 |
+| `bin/` | Executables the Bash tool calls as bare commands | Rejected by claude.ai org distribution (§8) |
+| `settings.json` (`agent`) | The plugin replaces the main-thread agent | Only `agent`, `subagentStatusLine` |
+| Theme | A colour theme | Experimental |
+| `CLAUDE.md` in the plugin | Never — it isn't loaded; validate warns | Ship instructions as a skill |
 
 ---
 
 ## 1. Skills
 
-**Location:** `skills/` or `commands/` in the plugin root, or a single `SKILL.md` at the plugin root (`plugins-reference.md §Skills`).
+**Location:** `skills/` or `commands/` in the plugin root, or a single `SKILL.md` at the plugin root (`plugins__components.md §Skills`).
 
 - Skills are **directories containing `SKILL.md`**; commands are **flat `.md` files**. Both are discovered automatically on install. Use `skills/` for new plugins.
 - **Root `SKILL.md` loads only when all three hold:** no `skills/` directory, no `skills` manifest field, and the file is at the plugin root. Nothing else needs declaring.
@@ -23,12 +45,16 @@ Every component type a plugin can ship, the constraints that break plugins in pr
 | Supported frontmatter | Notes |
 |---|---|
 | `name`, `description` | Namespaced as `my-plugin:code-reviewer` in the @-mention typeahead |
-| `model`, `effort`, `maxTurns` | |
+| `model`, `effort`, `maxTurns` | Model/effort choice: see skill-builder `references/model-routing.md` |
 | `tools`, `disallowedTools` | |
 | `skills`, `memory`, `background` | |
+| `omitClaudeMd` | v2.1.271+ |
+| `color`, `experimental.cacheTtl` | |
 | `isolation` | **Only** valid value is `"worktree"` |
 
-**Not supported for plugin-shipped agents, for security reasons: `hooks`, `mcpServers`, `permissionMode`** (`plugins-reference.md §Agents`). Declaring them does not silently work — do not ship an agent that depends on them.
+**Ignored in plugin agents: `permissionMode`, `hooks`, `mcpServers`, `initialPrompt`** (`plugins__components.md §Agents`). The agent loads with those fields dropped — add hooks and MCP servers as plugin components instead, and don't ship an agent whose behaviour depends on them.
+
+**Subfolders.** `agents/review/security.md` in `my-plugin` loads as `my-plugin:review:security`; frontmatter `name` replaces only the file part; a file listed in the manifest `agents` key loads without the subfolder names.
 
 **Graceful degradation (plugin agents only).** Claude Code loads a plugin agent even when the frontmatter is broken:
 
@@ -43,7 +69,7 @@ Project, user, and managed agents are *skipped* in both cases. So a plugin agent
 
 **Location:** `hooks/hooks.json` in the plugin root, or inline in `plugin.json`.
 
-The file needs the **outer `{"hooks": …}` wrapper** — the config is not a bare event map:
+Classic hooks need the **outer `{"hooks": …}` wrapper** — the config is not a bare event map. A **mod** instead lists its module under `modules` (`{"modules": ["./register.js"]}`), alone or next to `hooks`; such a file is valid without the wrapper (`plugins__components.md §Hooks`, `mods.md`).
 
 ```json
 {
@@ -56,7 +82,7 @@ The file needs the **outer `{"hooks": …}` wrapper** — the config is not a ba
 }
 ```
 
-**Events (33).** Plugin hooks respond to the same lifecycle events as user hooks (`plugins-reference.md §Hooks`):
+**Events (33).** Plugin hooks respond to the same lifecycle events as user hooks (`plugins__components.md §Hooks`):
 
 | Group | Events |
 |---|---|
@@ -74,7 +100,7 @@ The file needs the **outer `{"hooks": …}` wrapper** — the config is not a ba
 
 **Hook types (5):** `command` (shell), `http` (POSTs the event JSON), `mcp_tool` (calls a tool on a configured MCP server), `prompt` (LLM evaluation, `$ARGUMENTS` placeholder), `agent` (agentic verifier with tools).
 
-**Targeting the plugin's own MCP server requires scoped names** (`plugins-reference.md §Hooks`) — the single most common silent failure:
+**Targeting the plugin's own MCP server requires scoped names** (`plugins__components.md §MCP servers`) — the single most common silent failure:
 
 | Field | Value |
 |---|---|
@@ -85,12 +111,15 @@ A matcher written against the bare server key **never fires**.
 
 ## 4. MCP servers
 
-**Location:** `.mcp.json` in the plugin root, or inline `mcpServers` in `plugin.json`. Standard MCP server configuration.
+**Location:** `.mcp.json` in the plugin root (with or without the `mcpServers` wrapper), or `mcpServers` in `plugin.json`: an inline map, a `.json` path, an `.mcpb`/`.dxt` bundle path or https URL, or an array of these. A later declaration of the same server name replaces an earlier one (`plugins__manifest-reference.md §mcpServers`).
 
-- Plugin MCP servers start automatically when the plugin is enabled and appear as normal tools.
-- They are configured independently of the user's own MCP servers.
+- Plugin MCP servers start automatically when the plugin is enabled; in `/mcp` they are `plugin:<plugin>:<server>`, tools are `mcp__plugin_<plugin>_<server>__<tool>`.
+- **Plugin servers are deduplicated by endpoint, not by name**: one pointing at the same URL or command as an enabled user/project/local server counts as a duplicate and is not connected (`mcp.md §Scope hierarchy and precedence`). Shared-daemon designs → `mcp-patterns.md`.
 - `/reload-plugins` **keeps live connections** for servers whose configuration is unchanged.
-- Path variables resolve only in `command`/`args`/`env` (stdio) and `url`/`headers`/`headersHelper` (http/sse/ws) — see `manifest-reference.md §10`.
+- Path variables and `${user_config.*}` resolve only in `command`/`args`/`env` (stdio) and `url`/`headers`/`headersHelper` (http/sse/ws) — see `manifest-reference.md §10`; `headersHelper` rejects `${user_config.*}`.
+- `.mcpb` bundles: extracted into `.mcpb-cache/` under the plugin root; a bundle's own settings are set at install with `claude plugin install --config <server>.<key>=<value>` (v2.1.285+) or `/plugin` → Configure (`plugins__components.md §Include a packaged MCPB server`).
+- `"type": "sdk"` entries are skipped with a warning (v2.1.274+) — only an SDK host can register in-process servers.
+- `claude plugin validate` checks plugin MCP entries since v2.1.281: dropped entries, undeclared `${user_config.*}`, invalid URLs (errors); `http://`/`ws://` to non-loopback hosts and literal-looking credentials in headers (warnings).
 
 ## 5. LSP servers
 
@@ -113,7 +142,7 @@ Background commands started automatically while the plugin is active; every stdo
 
 **Location:** `monitors/monitors.json` (a JSON array), or `experimental.monitors` in `plugin.json` as the same array **or** a relative path string (`"./config/monitors.json"`).
 
-- **Interactive CLI sessions only**, unsandboxed, at the same trust level as hooks; skipped where the Monitor tool is unavailable.
+- **Interactive CLI sessions only**, unsandboxed, at the same trust level as hooks; skipped where the Monitor tool is unavailable, and not on Amazon Bedrock, Google Cloud's Agent Platform, or Microsoft Foundry (`plugins__manifest-reference.md §Fields`).
 - Required: `name` (unique within the plugin — prevents duplicate processes on reload), `command` (persistent background process in the session cwd), `description` (shown in the task panel and notification summaries).
 - Optional `when`: `"always"` (default — session start and plugin reload) or `"on-skill-invoke:<skill-name>"` (first dispatch of that skill).
 - `command` supports `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}`, `${CLAUDE_PROJECT_DIR}` and any `${ENV_VAR}`. Prefix `cd "${CLAUDE_PLUGIN_ROOT}" && ` when the script must run from the plugin directory.
@@ -127,7 +156,7 @@ JSON files in `themes/`: a `base` preset plus a sparse `overrides` map of color 
 ## 8. Workflows, bin/, settings.json
 
 - **`workflows/`** — workflow script files. The `workflows` manifest key *replaces* this default.
-- **`bin/`** — executables added to the Bash tool's `PATH`, callable as bare commands while the plugin is enabled. **Forbidden in org distribution:** claude.ai rejects any plugin with a top-level `bin/` whether it arrives by marketplace sync or direct upload, with `Plugin contains a top-level bin/ directory` (marketplace sync rejects that plugin and syncs the rest). Put executables in `scripts/` and reference them as `${CLAUDE_PLUGIN_ROOT}/scripts/<name>` (`plugin-marketplaces.md §Keep executables out of the top-level bin directory`).
+- **`bin/`** — executables added to the Bash tool's `PATH`, callable as bare commands while the plugin is enabled. **Forbidden in org distribution:** claude.ai rejects any plugin with a top-level `bin/` whether it arrives by marketplace sync or direct upload, with `Plugin contains a top-level bin/ directory` (marketplace sync rejects that plugin and syncs the rest). Put executables in `scripts/` and reference them as `${CLAUDE_PLUGIN_ROOT}/scripts/<name>` (`plugins__host-marketplace.md §Distribute through organization settings`).
 - **`settings.json`** at the plugin root — only `agent` and `subagentStatusLine`; see `manifest-reference.md §11`.
 
 ---
@@ -137,7 +166,7 @@ JSON files in `themes/`: a `base` preset plus a sparse `overrides` map of color 
 ```text
 enterprise-plugin/
 ├── .claude-plugin/
-│   └── plugin.json           # the ONLY file that belongs in .claude-plugin/
+│   └── plugin.json           # the only file you author here (mods: Claude Code also writes types/)
 ├── skills/<name>/SKILL.md    # + optional reference.md, scripts/
 ├── commands/*.md             # flat-file skills
 ├── agents/*.md
@@ -151,6 +180,7 @@ enterprise-plugin/
 ├── .mcp.json
 ├── .lsp.json
 ├── scripts/                  # hook and utility scripts
+├── evals/                    # claude plugin eval cases (results/ → .gitignore)
 ├── LICENSE
 └── CHANGELOG.md
 ```
@@ -171,7 +201,7 @@ enterprise-plugin/
 | Executables | `bin/` |
 | Settings | `settings.json` |
 
-**A `CLAUDE.md` at the plugin root is not loaded as context.** Ship instructions as a skill instead (`plugins-reference.md §Standard plugin layout`).
+**A `CLAUDE.md` at the plugin root is not loaded as context** and `claude plugin validate` warns about it. Ship instructions as a skill instead (`plugins__components.md §Skills`).
 
 ## 10. Cache, orphaned directories, traversal, symlinks
 
@@ -183,7 +213,7 @@ A plugin or marketplace folder is removed from the cache only when it holds no d
 
 **Path traversal.** A component path resolving outside the plugin root (`../shared-utils`) is rejected with `path escapes plugin directory`, whether declared in `plugin.json` or in a marketplace entry; the plugin loads without that component. Files outside the plugin directory are also **not copied** into the cache, so a bundled script can't read them at runtime either.
 
-**Symlinks** at copy time (`plugins-reference.md §Share files within a marketplace with symlinks`):
+**Symlinks** at copy time (`plugins__host-marketplace.md §Share files within a marketplace with symlinks`):
 
 | Target resolves | Behavior |
 |---|---|
@@ -239,7 +269,7 @@ Edits to a skill's `SKILL.md` take effect immediately; changes to `hooks/`, `.mc
 
 ## 14. Plugins synced from claude.ai (`<name>@synced`)
 
-In Cowork and cloud sessions, plugins enabled for the claude.ai account are downloaded into `~/.claude/plugins/synced/` in that session's environment and loaded as `<name>@synced`. **They never load in a terminal session you start yourself.** `claude plugin list` shows them under `Synced from claude.ai`.
+Plugins enabled for the claude.ai account — including ones the organization turns on for its members — load as `<name>@synced`, with no marketplace and no install record. **They load in Cowork and also in terminal sessions signed in with the claude.ai account**: each Claude Code start syncs once in the background (terminal sync requires v2.1.273+; skills, agents, hooks, MCP and LSP servers all load, with the trust of an installed marketplace plugin) (`plugins__loading.md §Plugins synced from claude.ai`). `claude plugin list` shows them under `Synced from claude.ai`.
 
 - `install` / `update` / `uninstall` don't apply — manage the plugin on claude.ai. Turning it off for the account keeps it out of every future synced session.
 - Per-environment off switch: `claude plugin disable <name>@synced` (writes `"<name>@synced": false` to that environment's user `enabledPlugins`); per-project: the same key in the committed `.claude/settings.json`.

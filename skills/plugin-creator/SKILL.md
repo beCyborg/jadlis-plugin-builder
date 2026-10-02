@@ -9,12 +9,14 @@ description: >-
   плагин", "собери плагин", "упакуй в плагин", "новый маркетплейс", "провали
   дируй плагин", "проверь плагин", "зарелизь плагин", "выпусти версию
   плагина", "обнови маркетплейс", "перенеси плагин", "мигрируй репо",
-  "make a plugin", "package as a plugin", "validate plugin", "release the
-  plugin", "publish plugin version", "plugin marketplace", "migrate plugin
-  repo". DO NOT TRIGGER when: creating or improving a SKILL itself — its
-  content, description, evals, benchmarks (use skill-creator; this skill
-  packages finished work), general git/GitHub work unrelated to plugins
-  (use /github), installing third-party plugins for daily use (use /plugin).
+  "упакуй мод", "make a plugin", "package as a plugin", "package a mod",
+  "validate plugin", "release the plugin", "publish plugin version", "plugin
+  marketplace", "migrate plugin repo". DO NOT TRIGGER when: creating or
+  improving a SKILL itself — its content, description, evals, benchmarks
+  (use skill-builder; this skill packages finished work), writing a mod's
+  code (Claude Code's built-in plugin-authoring skill), general git/GitHub
+  work unrelated to plugins (use /github), installing third-party plugins
+  for daily use (use /plugin).
 license: Apache-2.0
 allowed-tools:
   - Read
@@ -32,7 +34,7 @@ allowed-tools:
 
 # plugin-creator — assemble, validate, release, migrate
 
-Companion to skill-creator: that one authors skills; this one packages finished
+Companion to skill-builder: that one authors skills; this one packages finished
 work into plugins/marketplaces and operates their lifecycle. Orchestration is
 inline — git/gh operations are sequential and state-heavy; no subagents in v1.
 
@@ -52,8 +54,11 @@ inline — git/gh operations are sequential and state-heavy; no subagents in v1.
 
 | Question about… | Reference |
 |---|---|
+| which component fits (skill, agent, hook, mod, MCP, output style, monitor, …) | references/components.md §0 |
 | plugin.json schema, userConfig, dependencies, path vars | references/manifest-reference.md |
 | component types and their limits (skills/agents/hooks/MCP/LSP/…) | references/components.md |
+| mods: `modules`, `types`, `claude plugin test`, security, org distribution | references/mods.md |
+| MCP server as a shared daemon (patterns U / L / C), MCP preflight checks | references/mcp-patterns.md |
 | marketplace.json, 7 source types, hosting, managed limits, renames | references/marketplace-ops.md |
 | shipping a version, validate matrix, tags, CI | references/release-checklist.md |
 | field-tested traps (autoUpdate wipe, MCP prefixes, caches…) | references/pitfalls.md |
@@ -74,7 +79,9 @@ Ambiguous → ask one question with the four options.
 
 Goal: existing work (skills/hooks/MCP/agents) → a repo matching repo-standard.md.
 
-1. Interview (short): what components; one plugin or a family (monorepo
+1. Interview (short): what components (pick with components.md §0 — a mod
+   only for UI, no-turn commands or event rewriting; it needs Claude Code
+   ≥ 2.1.287 and fails open); one plugin or a family (monorepo
    `plugins/<name>/` is the default — repo-standard.md §layout); new repo or an
    entry in an existing marketplace; public/private.
 2. Scaffold: `.claude-plugin/marketplace.json` (+`$schema`, owner, sorted
@@ -86,22 +93,28 @@ Goal: existing work (skills/hooks/MCP/agents) → a repo matching repo-standard.
    behavior: `skills` ADDS, `commands`/`agents`/`workflows` REPLACE) and the
    MCP tool-name prefix change (`mcp__plugin_<plugin>_<server>__<tool>` —
    pitfalls.md §4: fix bodies and references, not just allowed-tools).
+   Mods: the module code comes from Claude Code's built-in `plugin-authoring`
+   skill; this skill packages it (`hooks/hooks.json` → `modules`, mods.md).
+   MCP servers that may run as a shared daemon: mcp-patterns.md.
 4. Run Validate mode. Then suggest Release mode for the first tag.
 
 ## Validate
 
-1. `python3 "{PLUGIN_ROOT}/scripts/preflight_plugin.py" <repo-root>` — offline
-   house-standard invariants (version placement, $schema, LICENSE, I1–I11,
-   settings.json keys, semver deps, JSON parse of .mcp.json/hooks.json,
-   hooks wrapper, PLUGIN_ROOT quoting).
-2. `claude plugin validate <repo-root> --strict` — the canon. Also run the
+1. `python3 "{PLUGIN_ROOT}/scripts/preflight_plugin.py" <root>` — runs
+   `claude plugin validate` on the root and each local plugin dir first, then
+   the house invariants (BOM, reserved names, entry = manifest name, version
+   placement, $schema, LICENSE, I1–I11, hooks wrapper or mod `modules`, MCP
+   variables and endpoints). `<root>` = marketplace repo or one plugin dir.
+2. `claude plugin validate <root> --strict` — the canon, strict. Also run the
    narrower modes that apply (plugin dir, bare skills dir — the matrix in
    release-checklist.md; NB: a root `SKILL.md` is only checked when the named
-   directory is literally called `skills`).
-3. Runtime layer (validate ≠ loader): smoke-install into a clean env
+   directory is literally called `skills`). Mods: `claude plugin test`.
+3. Behaviour (when the plugin has an eval suite): `claude plugin eval` —
+   release-checklist.md §5b.
+4. Runtime layer (validate ≠ loader): smoke-install into a clean env
    (`cd /tmp && claude -p` with `--plugin-dir`), invoke a sentinel skill,
    `claude plugin details <name>` for the token inventory.
-4. Report findings grouped E/W with the fix per finding; do not auto-fix
+5. Report findings grouped E/W with the fix per finding; do not auto-fix
    without being asked.
 
 `{PLUGIN_ROOT}` = this plugin's root; when running from a dev clone use the
@@ -110,7 +123,7 @@ relative `scripts/` path.
 ## Release
 
 Follow references/release-checklist.md top to bottom. Spine: preflight +
-validate green → bump `version` in plugin.json ONLY (version = update cache
+validate green (+ `claude plugin eval` when a suite exists) → bump `version` in plugin.json ONLY (version = update cache
 key; never duplicate it in the marketplace entry) → CHANGELOG → commit+push →
 `claude plugin tag --push` (`{plugin-name}--v{version}`; needs clean tree and
 consistent manifests) → `gh release create` → smoke-install → tell the user
@@ -137,6 +150,7 @@ marketplace-consolidation plans).
 
 ## Non-goals
 
-Skill content authoring, descriptions, evals → skill-creator. Publishing to
+Skill content authoring, descriptions, single-skill evals → skill-builder.
+Mod code → Claude Code's built-in `plugin-authoring` skill. Publishing to
 Anthropic's official/community catalogs → their web forms (release-checklist.md
 notes). Marketplace UI walkthroughs → official docs.

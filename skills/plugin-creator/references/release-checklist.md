@@ -1,8 +1,8 @@
 # Plugin Release Checklist
 
-> Last audited against Claude Code docs: 2026-09-01 (~v2.1.251, mirror b290425)
+> Last audited against Claude Code docs: 2026-10-02 (v2.1.287, mirror 934d35c9)
 
-Ordered checklist for shipping a version of a plugin or a marketplace. Canon shorthands: `PM` = `plugin-marketplaces.md`, `PR` = `plugins-reference.md`, `P` = `plugins.md`, `PD` = `plugin-dependencies.md`. Steps 4–9 are the ones that silently ship nothing when skipped.
+Ordered checklist for shipping a version of a plugin or a marketplace. Canon shorthands for the docs mirror: `CLI` = `plugins__cli-reference.md`, `D` = `plugins__dependencies.md`, `T` = `plugins__troubleshooting.md`, `PE` = `plugin-evals.md`, followed by the section heading. Steps 4–9 are the ones that silently ship nothing when skipped.
 
 ## Rule 0 — where you are allowed to edit
 
@@ -22,26 +22,29 @@ Skim `changelog.md` for releases newer than the audit markers in your references
 
 ## 2. Make the content changes
 
-In the dev clone only (Rule 0). Keep component files at the **plugin root** — only `plugin.json` (and `marketplace.json`, when the repo is also the marketplace) belong in `.claude-plugin/`.
+In the dev clone only (Rule 0). Keep component files at the **plugin root** — only `plugin.json` (and `marketplace.json`, when the repo is also the marketplace) belong in `.claude-plugin/` (a mod's generated `.claude-plugin/types/` is the exception — `mods.md §1`).
+
+Agents or skills that set `model:` / `effort:` — model/effort choice: see skill-builder `references/model-routing.md`.
 
 ## 3. Offline preflight
 
 Run the local guardrail before invoking the CLI — it catches the cheap mistakes without a Claude Code process:
 
 ```bash
-python3 -m scripts.preflight_plugin .      # PLACEHOLDER — ships with this plugin
+python3 "{PLUGIN_ROOT}/scripts/preflight_plugin.py" <repo-root>    # {PLUGIN_ROOT} = plugin-creator's skill dir; add --json for CI
 ```
 
-Intended scope: manifest JSON parses (and has **no UTF-8 BOM** — before v2.1.246 a BOM produced `corrupt manifest file`), `name` is kebab-case with no control or bidi characters, component paths exist and start with `./`, no path escapes the plugin root, `version` is declared in exactly one place, and `.mcp.json` / `hooks/hooks.json` parse as JSON. Preflight is an authoring guardrail; `claude plugin validate` is the canon.
+It runs `claude plugin validate` on the root and on every local plugin dir first (skipped with a warning when `claude` isn't on PATH; `--no-validate` skips it on purpose), then the house checks listed in `repo-standard.md §preflight_plugin.py invariants`: manifests without a **UTF-8 BOM** (before v2.1.246 a BOM in `plugin.json` failed the install), reserved plugin names, entry name = manifest name, version in exactly one place, `hooks.json` wrapper or mod `modules`, MCP variable and endpoint checks. It accepts a marketplace repo or a single plugin directory. Preflight is an authoring guardrail; `claude plugin validate` is the canon.
 
 ## 4. `claude plugin validate` — every mode that applies
 
-One run does **not** cover everything. Pick the rows that match your layout (`PM#validate-a-plugin-or-a-directory-without-a-manifest`); everything except the first row requires **v2.1.233+**.
+One run does **not** cover everything. Pick the rows that match your layout (`CLI §plugin validate`); the rows for directories without a manifest require **v2.1.233+**.
 
 | To check | Run | Covered |
 |---|---|---|
 | Marketplace catalog | `claude plugin validate .` (from the marketplace root) | schema, **duplicate plugin names**, `source` path traversal, and — per entry with a local `source` — that plugin's own `plugin.json`, with a warning when the entry's `version` disagrees. Findings prefixed `plugins[2] plugin.json →`. Since v2.1.196 this also covers `source: "."`, works when `marketplace.json` sits outside `.claude-plugin/`, and reports entry problems even when the file has schema errors. **It never opens the plugins' skill/agent/command/hook files.** |
-| A plugin with a `plugin.json` | `claude plugin validate ./plugins/my-plugin` | `plugin.json`, `hooks/hooks.json`, and the `skills`, `agents`, `commands` directories **at the plugin root** |
+| A plugin with a `plugin.json` | `claude plugin validate ./plugins/my-plugin` | `plugin.json`, `hooks/hooks.json` (for a mod also the module's `hooks:` / `calls:` inventory), MCP server entries (v2.1.281+), and the `skills`, `agents`, `commands` directories **at the plugin root** |
+| A mod's tests | `claude plugin test` (in the mod dir) | every `*.test.ts(x)`; exit 1 on failure, no session or network (`mods.md §3`) |
 | A plugin with no manifest yet, or one component directory | `claude plugin validate ./my-plugin/agents` | every skill/agent/command file in that directory — the way to catch unparseable frontmatter |
 | A plugin whose skill is a root `SKILL.md` | `claude plugin validate ./skills` (name the holding dir) | each folder's root `SKILL.md`. The holding directory must literally be named `skills`; under any other name (`plugins/`) **no run checks it** |
 | A project / your user dirs | `claude plugin validate .claude` or `~/.claude` | `skills`, `agents`, and `commands` under it |
@@ -55,7 +58,7 @@ One run does **not** cover everything. Pick the rows that match your layout (`PM
 - `Invalid JSON syntax: …` on `hooks/hooks.json` — reported only in a plugin run; a session loads the plugin without those hooks.
 - `Duplicate plugin name "x" found in marketplace`, `plugins[0].source: Path contains ".."`, `… cannot contain control or bidirectional-formatting characters` (the last check added v2.1.247).
 - Warnings worth heeding: `Plugin name "x" is not kebab-case` and the Claude Desktop name rules (≤128 chars of letters, digits, `.`, `_`, `-`, starting alphanumeric; `org`/`org-provisioned`/`unknown` are reserved there) — Claude Code accepts these names, but claude.ai / Claude Desktop managed sync rejects the marketplace or silently drops the entry. A root `CLAUDE.md` also warns: it is not loaded as context.
-- For paths set through component path fields, only **existence** is checked — the files are never read.
+- For paths set through component path fields, only **existence** and containment are checked — the files are never read (`outputStyles`, `themes`, `monitors`, `lspServers` paths only since v2.1.283). `.lsp.json` is not read by validate at all.
 
 ## 5. `claude plugin details` — token inventory
 
@@ -64,6 +67,14 @@ claude plugin details <plugin>@<marketplace>
 ```
 
 Shows the component inventory (Skills — including `commands/` entries — Agents, Hooks, MCP, LSP) and two cost figures: **always-on** tokens added to every session by listing text, and **on-invoke** per component. The always-on total comes from the `count_tokens` API for the active model (character-estimate fallback when unreachable); per-component numbers are scaled from it. Check this before shipping anything that grows the roster — always-on cost is paid by every user in every session.
+
+## 5b. `claude plugin eval` — behaviour, when the plugin has a suite
+
+```bash
+claude plugin eval . --trust-plugin --model <pinned model id> --judge-model <pinned model id> --max-cost-usd <ceiling> --json results.json
+```
+
+Requires v2.1.269+ (and git 2.31+ when git is installed). Every run and judge call is billed to the account, so set a ceiling. Pin `--model`/`--judge-model` so a model rollout isn't read as a regression; `--threshold` (default 1.0) sets the pass score; add `evals/results/` to `.gitignore`. A suite lives in `evals/` (or the manifest's `experimental.evals`); `claude plugin eval init` drafts one (`PE §Run evals in CI`). Evals for one skill's wording/triggering → skill-builder; `claude plugin eval` and skill-creator-style `evals/evals.json` don't read each other's files (`PE`).
 
 ## 6. Bump `version` — the step that decides whether anyone gets the release
 
@@ -88,7 +99,7 @@ Conventional commit, English message, no unrelated files. Push before touching a
 claude plugin tag --push          # from the plugin directory; --dry-run first
 ```
 
-Convention: **`{plugin-name}--v{version}`**, where the version matches that commit's `plugin.json`. Without such tags, semver dependency constraints cannot resolve (`no-matching-tag`) — so tag whenever anything may depend on this plugin (`PD#tag-plugin-releases-for-version-resolution`).
+Convention: **`{plugin-name}--v{version}`**, where the version matches that commit's `plugin.json`. Without such tags, semver dependency constraints cannot resolve (`no-matching-tag`) — so tag whenever anything may depend on this plugin (`D §Release a plugin that others depend on`).
 
 Preconditions the command enforces before creating the tag: the plugin contents validate, `plugin.json` and the marketplace entry **agree on the version**, the working tree under the plugin directory is **clean**, and the tag does not already exist. Options: `--push` (to `origin`; `--remote` for another), `--dry-run`, `-f/--force` (dirty tree or existing tag), `-m` with `%s` as the version placeholder. If the push fails the tag still exists locally and the command exits non-zero. Tags are read from the repository hosting the plugin — or the marketplace repository for a relative-path plugin (local-folder marketplaces need **v2.1.196+**). `git tag <name>--v<version>` by hand is equivalent if you keep the two versions in sync yourself.
 
@@ -109,7 +120,7 @@ CLAUDE_CONFIG_DIR=$(mktemp -d) claude plugin marketplace add <owner>/<repo>
 CLAUDE_CONFIG_DIR=$(mktemp -d) claude plugin install <plugin>@<marketplace>
 ```
 
-Then, in a session against that config dir: invoke a **sentinel skill** (a cheap, deterministic skill of the plugin) by its namespaced name `/<plugin>:<skill>` and confirm the output; check `claude plugin list --json` has no `errors` field on your plugin; and run `claude --debug` to see plugin load, skill/agent/hook registration, and MCP init. Faster inner loop during development: `claude --plugin-dir ./my-plugin` (accepts a `.zip`, repeatable; a local copy overrides an installed plugin of the same name except where managed settings force the state) plus `/reload-plugins`.
+Then, in a session against that config dir: invoke a **sentinel skill** (a cheap, deterministic skill of the plugin) by its namespaced name `/<plugin>:<skill>` and confirm the output; check `claude plugin list --json` has no `errors` field on your plugin; and run `claude --debug` to see plugin load, skill/agent/hook registration, and MCP init. Faster inner loop during development: `claude --plugin-dir ./my-plugin` (accepts a `.zip`, repeatable, and since v2.1.265 a folder of plugins; a local copy overrides an installed plugin of the same name except where managed settings force the state) plus `/reload-plugins`.
 
 ## 12. Tell the recipients
 
@@ -133,11 +144,11 @@ Keep that line in the README and repeat it in the release notes. Point users at 
 
 *(verified against live anthropics repos, 2026-09-01)* **Pin both the action SHA and the `claude-cli-version` input.** An unpinned action is an unreviewed executable in your release path, and an unpinned CLI turns a Claude Code release into a surprise CI break — or a surprise pass.
 
-Also *(verified against live anthropics repos, 2026-09-01)*: **the validator is not the loader.** These invariants and `claude plugin validate` can both be green while the plugin fails to load in a session. Add to CI, after the action: a JSON-parse of `.mcp.json` and `hooks/hooks.json`, and the step-11 smoke install against a throwaway `CLAUDE_CONFIG_DIR` with one sentinel skill invocation.
+Also *(verified against live anthropics repos, 2026-09-01)*: **the validator is not the loader.** These invariants and `claude plugin validate` can both be green while the plugin fails to load in a session. Add to CI, after the action: `scripts/preflight_plugin.py` (it covers JSON parse, `.lsp.json` and mods, which validate skips or reads only partly — validate itself checks MCP entries since v2.1.281), and the step-11 smoke install against a throwaway `CLAUDE_CONFIG_DIR` with one sentinel skill invocation.
 
 ## Debugging a failed release
 
-`claude --debug` prints plugin loading, manifest errors, skill/agent/hook registration, and MCP initialization. `claude plugin list --json` exposes an `errors` field on plugins that failed (absent when clean) — the programmatic check for dependency errors `dependency-unsatisfied`, `range-conflict`, `dependency-version-unsatisfied`, `no-matching-tag` (`PD#resolve-dependency-errors`). Common causes (`PR#common-issues`):
+`claude --debug` prints plugin loading, manifest errors, skill/agent/hook registration, and MCP initialization. `claude plugin list --json` exposes an `errors` field on plugins that failed (absent when clean) — the programmatic check for dependency errors `dependency-unsatisfied`, `range-conflict`, `dependency-version-unsatisfied`, `no-matching-tag` (`T §Plugin installed but not working`). Common causes:
 
 | Symptom | Cause | Fix |
 |---|---|---|
