@@ -1,0 +1,5 @@
+# CI lives in the hub: gitleaks, claude plugin validate --strict, README parity, privacy grep.
+include:
+  - project: beCyborg/jadlis-hub
+    ref: main
+    file: /ci/plugin-ci.yml

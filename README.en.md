@@ -7,7 +7,7 @@ version in exactly one place, changelog, tag, release and an install into a clea
 the recipient gets the line they have to run on their side.
 
 ```
-claude plugin marketplace add https://github.com/beCyborg/jadlis-hub
+claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
 claude plugin install jadlis-plugin-creator@jadlis
 ```
 
@@ -65,7 +65,7 @@ errors and warnings, with the fix on each one.
 ```
 You are the installer. Install the plugin jadlis-plugin-creator from the jadlis marketplace on this Mac.
 Run exactly these commands, verbatim, shortening nothing:
-1. claude plugin marketplace add https://github.com/beCyborg/jadlis-hub
+1. claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
 2. claude plugin install jadlis-plugin-creator@jadlis
 3. claude plugin list — show me the line about jadlis-plugin-creator and its version.
 This plugin asks for no keys. Check separately and tell me whether this machine has git,
@@ -79,7 +79,7 @@ If a command returns an error, stop, show me the output, and do not move to the 
 **b) Commands by hand.**
 
 ```
-claude plugin marketplace add https://github.com/beCyborg/jadlis-hub
+claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
 claude plugin install jadlis-plugin-creator@jadlis
 claude plugin list
 ```

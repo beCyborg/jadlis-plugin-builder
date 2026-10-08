@@ -7,7 +7,7 @@
 строка, которую он выполняет у себя.
 
 ```
-claude plugin marketplace add https://github.com/beCyborg/jadlis-hub
+claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
 claude plugin install jadlis-plugin-creator@jadlis
 ```
 
@@ -61,7 +61,7 @@ validate --strict`, бамп версии с changelog, тег и релиз, п
 ```
 Ты — установщик. Поставь на этот Mac плагин jadlis-plugin-creator из маркетплейса jadlis.
 Выполни ровно эти команды, дословно, ничего не сокращая:
-1. claude plugin marketplace add https://github.com/beCyborg/jadlis-hub
+1. claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
 2. claude plugin install jadlis-plugin-creator@jadlis
 3. claude plugin list — покажи мне строку про jadlis-plugin-creator и его версию.
 Ключей этот плагин не просит. Проверь и скажи мне отдельно, есть ли на машине git,
@@ -75,7 +75,7 @@ python3 и gh с авторизацией (gh auth status): без них шаг
 **б) Команды руками.**
 
 ```
-claude plugin marketplace add https://github.com/beCyborg/jadlis-hub
+claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
 claude plugin install jadlis-plugin-creator@jadlis
 claude plugin list
 ```
