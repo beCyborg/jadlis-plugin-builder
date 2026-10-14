@@ -1,6 +1,6 @@
 # Plugin Release Checklist
 
-> Last audited against Claude Code docs: 2026-10-02 (v2.1.287, mirror 934d35c9)
+> Last audited against Claude Code docs: 2026-10-14 (v2.1.300, mirror 305bb5ef)
 
 Ordered checklist for shipping a version of a plugin or a marketplace. Canon shorthands for the docs mirror: `CLI` = `plugins__cli-reference.md`, `D` = `plugins__dependencies.md`, `T` = `plugins__troubleshooting.md`, `PE` = `plugin-evals.md`, followed by the section heading. Steps 4–9 are the ones that silently ship nothing when skipped.
 
@@ -44,6 +44,7 @@ One run does **not** cover everything. Pick the rows that match your layout (`CL
 |---|---|---|
 | Marketplace catalog | `claude plugin validate .` (from the marketplace root) | schema, **duplicate plugin names**, `source` path traversal, and — per entry with a local `source` — that plugin's own `plugin.json`, with a warning when the entry's `version` disagrees. Findings prefixed `plugins[2] plugin.json →`. Since v2.1.196 this also covers `source: "."`, works when `marketplace.json` sits outside `.claude-plugin/`, and reports entry problems even when the file has schema errors. **It never opens the plugins' skill/agent/command/hook files.** |
 | A plugin with a `plugin.json` | `claude plugin validate ./plugins/my-plugin` | `plugin.json`, `hooks/hooks.json` (for a mod also the module's `hooks:` / `calls:` inventory), MCP server entries (v2.1.281+), and the `skills`, `agents`, `commands` directories **at the plugin root** |
+| A root-as-plugin repo (`.claude-plugin/` holds both `marketplace.json` and `plugin.json`) | `claude plugin validate .` | the marketplace **and** the plugin's manifest and component files — **v2.1.289+**; earlier versions skipped the plugin (`CLI §plugin validate`, ~line 612; changelog 2.1.289) |
 | A mod's tests | `claude plugin test` (in the mod dir) | every `*.test.ts(x)`; exit 1 on failure, no session or network (`mods.md §3`) |
 | A plugin with no manifest yet, or one component directory | `claude plugin validate ./my-plugin/agents` | every skill/agent/command file in that directory — the way to catch unparseable frontmatter |
 | A plugin whose skill is a root `SKILL.md` | `claude plugin validate ./skills` (name the holding dir) | each folder's root `SKILL.md`. The holding directory must literally be named `skills`; under any other name (`plugins/`) **no run checks it** |
@@ -59,6 +60,7 @@ One run does **not** cover everything. Pick the rows that match your layout (`CL
 - `Duplicate plugin name "x" found in marketplace`, `plugins[0].source: Path contains ".."`, `… cannot contain control or bidirectional-formatting characters` (the last check added v2.1.247).
 - Warnings worth heeding: `Plugin name "x" is not kebab-case` and the Claude Desktop name rules (≤128 chars of letters, digits, `.`, `_`, `-`, starting alphanumeric; `org`/`org-provisioned`/`unknown` are reserved there) — Claude Code accepts these names, but claude.ai / Claude Desktop managed sync rejects the marketplace or silently drops the entry. A root `CLAUDE.md` also warns: it is not loaded as context.
 - For paths set through component path fields, only **existence** and containment are checked — the files are never read (`outputStyles`, `themes`, `monitors`, `lspServers` paths only since v2.1.283). `.lsp.json` is not read by validate at all.
+- **README install-line advice** (v2.1.295+, changelog 2.1.295): when a plugin's README has no install line, validate prints the line to paste. It is advice only — it **never changes the exit code, even with `--strict`**, so CI stays green either way; fix the README by hand (house format: `repo-standard.md` item 7).
 
 ## 5. `claude plugin details` — token inventory
 
@@ -75,6 +77,10 @@ claude plugin eval . --trust-plugin --model <pinned model id> --judge-model <pin
 ```
 
 Requires v2.1.269+ (and git 2.31+ when git is installed). Every run and judge call is billed to the account, so set a ceiling. Pin `--model`/`--judge-model` so a model rollout isn't read as a regression; `--threshold` (default 1.0) sets the pass score; add `evals/results/` to `.gitignore`. A suite lives in `evals/` (or the manifest's `experimental.evals`); `claude plugin eval init` drafts one (`PE §Run evals in CI`). Evals for one skill's wording/triggering → skill-builder; `claude plugin eval` and skill-creator-style `evals/evals.json` don't read each other's files (`PE`).
+
+**Keeping built-in tools out of a run** (v2.1.299+, changelog 2.1.299; confirmed in `claude plugin eval --help` on 2.1.300 — not yet in `PE`): `--disallow-tools <tools...>` removes built-in tools from Claude in every case, even if granted (e.g. `--disallow-tools Agent TaskStop`); the per-case field `disallowed_tools` (a list, next to `allowed_tools` in `prompt.md` frontmatter or `case.yaml`) does the same for one case, and the two lists are combined. Only built-in tools are accepted — any other name fails the case with `… cannot be disallowed: it is not a built-in tool` (strings in the 2.1.300 binary). Use it when a skill must be scored without delegating to subagents.
+
+**API errors now fail the suite** (v2.1.299+, `PE §"ended on an API error and scored 0 without grading"`): a run that ends on an API error scores 0 without grading and makes the command exit 1. Before v2.1.299 such a run was graded on what it had produced, so an older green result can hide refused runs.
 
 ## 6. Bump `version` — the step that decides whether anyone gets the release
 
@@ -116,9 +122,13 @@ Only after the tag is pushed. Notes = the CHANGELOG entry plus the upgrade comma
 **A green validator is not a green load.** `claude plugin validate` checks schema and frontmatter parsing; it never starts an MCP server, never runs a hook, and never reads files behind component path fields. Prove the release actually loads:
 
 ```bash
-CLAUDE_CONFIG_DIR=$(mktemp -d) claude plugin marketplace add <owner>/<repo>
-CLAUDE_CONFIG_DIR=$(mktemp -d) claude plugin install <plugin>@<marketplace>
+CFG=$(mktemp -d)
+CLAUDE_CONFIG_DIR=$CFG claude plugin install <plugin> --marketplace <owner>/<repo-or-url>   # v2.1.292+
+# older CLI: CLAUDE_CONFIG_DIR=$CFG claude plugin marketplace add <owner>/<repo>
+#            CLAUDE_CONFIG_DIR=$CFG claude plugin install <plugin>@<marketplace>
 ```
+
+Use **one** config dir for both steps (two separate `mktemp -d` calls install into a directory that has no marketplace). The one-command form is the same line recipients get from the README (`repo-standard.md` item 7), so the smoke test also proves that line. Since v2.1.295 `install`, `enable`, `disable` and `marketplace add` print a **warning when the settings file they write to does not load** (changelog 2.1.295) — in a smoke run treat that warning as a failure and fix the settings file before trusting the result.
 
 Then, in a session against that config dir: invoke a **sentinel skill** (a cheap, deterministic skill of the plugin) by its namespaced name `/<plugin>:<skill>` and confirm the output; check `claude plugin list --json` has no `errors` field on your plugin; and run `claude --debug` to see plugin load, skill/agent/hook registration, and MCP init. Faster inner loop during development: `claude --plugin-dir ./my-plugin` (accepts a `.zip`, repeatable, and since v2.1.265 a folder of plugins; a local copy overrides an installed plugin of the same name except where managed settings force the state) plus `/reload-plugins`.
 

@@ -7,6 +7,12 @@ version in exactly one place, changelog, tag, release and an install into a clea
 the recipient gets the line they have to run on their side.
 
 ```
+claude plugin install jadlis-plugin-creator --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
+```
+
+On Claude Code older than 2.1.292, run two commands instead:
+
+```
 claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
 claude plugin install jadlis-plugin-creator@jadlis
 ```
@@ -65,8 +71,10 @@ errors and warnings, with the fix on each one.
 ```
 You are the installer. Install the plugin jadlis-plugin-creator from the jadlis marketplace on this Mac.
 Run exactly these commands, verbatim, shortening nothing:
-1. claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
-2. claude plugin install jadlis-plugin-creator@jadlis
+1. claude --version — if the version is below 2.1.292, run these two commands instead of step 2:
+   claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
+   claude plugin install jadlis-plugin-creator@jadlis
+2. claude plugin install jadlis-plugin-creator --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
 3. claude plugin list — show me the line about jadlis-plugin-creator and its version.
 This plugin asks for no keys. Check separately and tell me whether this machine has git,
 python3 and an authenticated gh (gh auth status): without them the tag, release and
@@ -79,13 +87,20 @@ If a command returns an error, stop, show me the output, and do not move to the 
 **b) Commands by hand.**
 
 ```
-claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
-claude plugin install jadlis-plugin-creator@jadlis
+claude plugin install jadlis-plugin-creator --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
 claude plugin list
 ```
 
-The first command installs nothing — it adds the marketplace. Only the second one installs, and one
-line removes it: `claude plugin uninstall jadlis-plugin-creator@jadlis --keep-data`.
+The first command adds the `jadlis` marketplace when it is not there yet, then installs the plugin.
+One line removes the plugin: `claude plugin uninstall jadlis-plugin-creator@jadlis --keep-data`.
+
+Claude Code older than 2.1.292 has no `--marketplace` flag. There, run two commands: the first adds
+the marketplace, the second installs the plugin.
+
+```
+claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
+claude plugin install jadlis-plugin-creator@jadlis
+```
 
 **c) The short command.** Open Claude Code in the dev clone of your repo and type:
 

@@ -1,6 +1,6 @@
 # Pitfalls — field-tested traps in plugin authoring and distribution
 
-> Last audited against Claude Code docs: 2026-10-02 (v2.1.287, mirror 934d35c9)
+> Last audited against Claude Code docs: 2026-10-14 (v2.1.300, mirror 305bb5ef)
 
 Battle-tested lessons from operating 10+ marketplaces (beCyborg, 2026-07..09). Each entry: symptom → cause → rule.
 
@@ -57,3 +57,9 @@ A mod (`mods.md`) runs inside Claude Code with the user's rights: no sandbox, ne
 ## 13. Two plugins on one MCP URL — one silently vanishes
 
 Plugin MCP servers are deduplicated by endpoint, not name (`mcp.md §Scope hierarchy and precedence`): a plugin server with the same URL or command as an enabled user/project/local server is not connected, and its tool names disappear with it. Observed on 2026-10-02 (not documented): the same happens between two plugins — which one survives was not established. Give every shared daemon one owner key; preflight errors on a URL repeated inside one marketplace. Patterns: `mcp-patterns.md`.
+
+## 14. MCP names in agent `tools:` and allow rules match one server only (v2.1.299)
+
+Since v2.1.299 an MCP allow rule or an agent `tools:` entry reaches **only the server whose whole normalized name it spells**: `mcp__a` no longer allows a server named `a__b` or `a_` (changelog 2.1.299). An agent or allow-list that worked on 2.1.298 because a short entry happened to cover a second server loses that server's tools after the upgrade — symptom: the subagent reports the tool missing, or fails to launch when no `tools:` entry resolves (`sub-agents.md §Available tools`). Deny and ask rules got the same whole-name matching for servers with `__` in their name (changelog 2.1.299).
+
+**Rule:** list every server by its full name — `mcp__<server>__*` (or `mcp__<server>`) for the whole server, `mcp__<server>__<tool>` for one tool; a server whose name contains `__` only as `mcp__<whole name>__*`. A plugin's own server is `mcp__plugin_<plugin>_<server>__*` (§4). Before a release, check that every `mcp__…` entry in agents and skills' `allowed-tools` spells one whole server name.

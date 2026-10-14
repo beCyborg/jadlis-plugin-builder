@@ -1,6 +1,6 @@
 # Repo standard — the house GitHub standard for plugin/marketplace repos
 
-> Last audited against Claude Code docs: 2026-10-02 (v2.1.287, mirror 934d35c9)
+> Last audited against Claude Code docs: 2026-10-14 (v2.1.300, mirror 305bb5ef)
 
 Canonical norms for every beCyborg plugin/marketplace repository. Assemble mode scaffolds to this standard; Validate mode checks against it; Migrate mode brings legacy repos up to it. Sources: official Claude Code docs + live anthropics repos (validate-plugins action, claude-plugins-official workflows), verified 2026-09-01.
 
@@ -15,7 +15,10 @@ Canonical norms for every beCyborg plugin/marketplace repository. Assemble mode 
    - Layer 2: green `validate` does NOT guarantee the plugin installs and loads: component-path files are checked for existence only, never parsed; a marketplace run never opens the plugins' files; `.lsp.json` is not read at all (`plugins__cli-reference.md §plugin validate`, `plugins__components.md §LSP servers`). MCP entries are checked since v2.1.281 and `outputStyles`/`themes`/`monitors`/`lspServers` paths since v2.1.283. Add: `scripts/preflight_plugin.py` (runs validate per plugin dir plus the invariants below), and a smoke-install into a clean environment with a sentinel-skill invocation. Mods: `claude plugin test`. Plugins with an eval suite: `claude plugin eval --trust-plugin --json` with pinned models (`release-checklist.md §5b`).
    - Fallback if the official action regresses: JSON-schema check + `scripts/preflight_plugin.py`.
 6. **`dependencies` with semver ranges** wherever plugins relate (`~2.1.0`, `^2.0`; prereleases opt-in via `-0` suffix). Cross-marketplace deps need `allowCrossMarketplaceDependenciesOn` in the root marketplace.
-7. **README auto-update block**: for non-Anthropic marketplaces auto-update is OFF by default for recipients — they run `claude plugin update <plugin>@<marketplace>` or enable auto-update once in `/plugin` → Marketplaces. Give the HTTPS slash-command install line (`/plugin marketplace add https://github.com/<owner>/<repo>`; full URL ⇒ HTTPS without env vars).
+7. **README install line + auto-update block**:
+   - Install line: one command, `claude plugin install <plugin> --marketplace https://<host>/<owner>/<repo>.git` — bare plugin name, no `@marketplace`; it adds the marketplace if needed (user settings, same policy checks as `marketplace add`) and installs (**v2.1.292+**, `plugins__install.md §Add a marketplace and install in one command`; `plugins__cli-reference.md §plugin install`). In a session: `/plugin install <plugin> --marketplace <source>` (v2.1.275+). Directly below it, keep the two-command fallback for older CLIs: `claude plugin marketplace add <url>` then `claude plugin install <plugin>@<marketplace>`. Full URL ⇒ HTTPS without env vars; non-GitHub hosts have no `owner/repo` shorthand.
+   - Since v2.1.295 `claude plugin validate` prints a suggested install line when the README has none — advice only, the exit code does not change even with `--strict` (changelog 2.1.295).
+   - Auto-update block: for non-Anthropic marketplaces auto-update is OFF by default for recipients — they run `claude plugin update <plugin>@<marketplace>` or enable auto-update once in `/plugin` → Marketplaces.
 8. **Semver for OWN plugins, SHA-pins for FOREIGN sources**: a curator marketplace pins every external source to a full 40-hex `sha` (invariant I5); own plugins release by semver. Anthropic's own catalog runs SHA-mode as curator — copy its CI, not its version discipline.
 9. **`name` is an immutable slug**, never reserved (`claude-*`, `anthropic-*`, `anthropics-*`, `cc-plugin-*`, `claude-code`, `claude-mods`, `official` beside claude/anthropic — `manifest-reference.md §2`), and equal in `plugin.json` and the marketplace entry: never rename a published plugin (breaks installs with `plugin-not-found`); change `displayName` for UI, use the append-only `renames` map for true renames (validator rejects cycles/unfinished chains).
 10. **Working-tree rule**: dev work in a separate clone (`~/<repo-name>`), never in `~/.claude/plugins/marketplaces/` (background refresh wipes edits AND local branches; any `claude` start triggers it, headless included). Push the branch early; `/plugin` operations only after push. See pitfalls.md §1.
@@ -30,7 +33,7 @@ Canonical norms for every beCyborg plugin/marketplace repository. Assemble mode 
     skills/…  agents/…  hooks/…  .mcp.json  CHANGELOG.md
   .github/workflows/plugin-validate.yml
   LICENSE
-  README.md                         # install line + auto-update block
+  README.md                         # one-command install line (+ two-command fallback) + auto-update block
 ```
 
 One repo per product family; `plugins/<name>/` subdirs with full relative-path sources (`"./plugins/<name>"` — portable to pre-2.1.239 clients; `metadata.pluginRoot` is optional sugar, see pitfalls.md §2). Root-as-plugin (`"source": "./"`) is acceptable for single-plugin repos and can coexist with a `plugins/` dir for later additions.

@@ -1,5 +1,28 @@
 # Changelog — jadlis-plugin-creator
 
+## [2.2.0] — 2026-10-14 — установка одной командой и сверка с Claude Code 2.1.300 / one-command install, audit to Claude Code 2.1.300
+
+### Для человека
+
+- Плагин теперь ставится одной командой: `claude plugin install jadlis-plugin-creator --marketplace https://gitlab.com/beCyborg/jadlis-hub.git`. Она сама добавляет маркетплейс и ставит плагин. Нужен Claude Code 2.1.292 или новее.
+- Если Claude Code старше, работают прежние две команды. Они остались в README сразу под новой строкой.
+- Справочники сверены с Claude Code 2.1.300. Скилл теперь знает новые правила: хук может блокировать действие при своём сбое (`onFailure: "block"`), MCP-сервер в `tools:` агента пишется полным именем, у имён скиллов есть запрещённые символы, у `claude plugin eval` появился `--disallow-tools`.
+- Скилл советует ту же строку установки для README твоих плагинов. Если строки нет, `claude plugin validate` подскажет её сам, но проверку не провалит.
+- В шаге проверочной установки была ошибка: две команды получали два разных временных конфига. Теперь обе работают с одним.
+
+### For agents
+
+- Added: `components.md §2` — agent `autoCompactWindow` (changelog 2.1.296; not yet in the docs mirror, plugin-agent support unconfirmed), `name` ≤ 256 chars (2.1.292), `skills` preload capped at 32 (2.1.295), MCP entries in `tools:`/`disallowedTools` match the whole server name only (2.1.299), `--debug` names unknown agent frontmatter fields (2.1.296); `§3` hooks `onFailure: "block"` for `command`/`http` hooks (2.1.295, `hooks.md §Block the action when a hook fails`), agent/permission row in the scoped-MCP-name table; `§5` LSP `requestTimeout` (2.1.288).
+- Added: `manifest-reference.md §2` "Skill, command and agent names" — hidden/direction-changing/blank-like characters, `<`, `>` in skill or command file/folder names (2.1.299), 256-char `name` cap (2.1.292); `§10` LSP placeholders resolve in `initializationOptions`/`settings` (fix in 2.1.288).
+- Added: `pitfalls.md §14` — MCP allow rules and agent `tools:` match one server only since 2.1.299.
+- Added: `release-checklist.md §4` root-as-plugin repos validate both manifests (2.1.289), README install-line advice (2.1.295, never changes the exit code); `§5b` `--disallow-tools` and the case field `disallowed_tools` (2.1.299, checked in `claude plugin eval --help` 2.1.300), API-error runs score 0 and exit 1 (2.1.299); `§11` one-command smoke install and the settings-file warning (2.1.295).
+- Added: `marketplace-ops.md §1` reserved marketplace names — JS object member names (2.1.296) and `<owner>-<repo>` download folders (2.1.290); `§12` `claude plugin install <plugin> --marketplace <source>` (2.1.292) and the settings-file warning (2.1.295).
+- Changed: `repo-standard.md` item 7 — README install line is now `claude plugin install <plugin> --marketplace <url>` with the two-command pair below it as the fallback for CC < 2.1.292.
+- Changed: README.md / README.en.md install sections use the one-command line, the old pair kept as the fallback.
+- Fixed: `release-checklist.md §11` smoke install called `mktemp -d` twice, so `install` ran in a config dir without the marketplace.
+- Changed: audit markers → 2026-10-14 (v2.1.300, mirror 305bb5ef) in every reference except `mods.md`, which this pass did not audit; `.claude-plugin/plugin.json` 2.1.1 → 2.2.0.
+- Unchanged: command `/plugin-creator`, modes, `preflight_plugin.py` and its tests.
+
 ## [2.1.1] — 2026-10-08 — репозиторий переехал на GitLab / repository moved to GitLab
 
 ### Для человека

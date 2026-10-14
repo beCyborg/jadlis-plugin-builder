@@ -1,6 +1,6 @@
 # MCP servers in a plugin — patterns for a shared daemon
 
-> Last audited against Claude Code docs: 2026-10-02 (v2.1.287, mirror 934d35c9)
+> Last audited against Claude Code docs: 2026-10-14 (v2.1.300, mirror 305bb5ef)
 
 Use this page when a plugin ships an MCP server that the author (or a power user) wants to run **once per machine as an HTTP daemon**, while ordinary recipients keep a zero-setup default. Basic plugin MCP facts (`.mcp.json`, `.mcpb` bundles, naming) are in `components.md §4`.
 

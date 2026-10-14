@@ -7,6 +7,12 @@
 строка, которую он выполняет у себя.
 
 ```
+claude plugin install jadlis-plugin-creator --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
+```
+
+Если Claude Code старше 2.1.292 — выполни две команды:
+
+```
 claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
 claude plugin install jadlis-plugin-creator@jadlis
 ```
@@ -61,8 +67,10 @@ validate --strict`, бамп версии с changelog, тег и релиз, п
 ```
 Ты — установщик. Поставь на этот Mac плагин jadlis-plugin-creator из маркетплейса jadlis.
 Выполни ровно эти команды, дословно, ничего не сокращая:
-1. claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
-2. claude plugin install jadlis-plugin-creator@jadlis
+1. claude --version — если версия ниже 2.1.292, вместо шага 2 выполни две команды:
+   claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
+   claude plugin install jadlis-plugin-creator@jadlis
+2. claude plugin install jadlis-plugin-creator --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
 3. claude plugin list — покажи мне строку про jadlis-plugin-creator и его версию.
 Ключей этот плагин не просит. Проверь и скажи мне отдельно, есть ли на машине git,
 python3 и gh с авторизацией (gh auth status): без них шаги тега, релиза и проверочной
@@ -75,13 +83,20 @@ python3 и gh с авторизацией (gh auth status): без них шаг
 **б) Команды руками.**
 
 ```
-claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
-claude plugin install jadlis-plugin-creator@jadlis
+claude plugin install jadlis-plugin-creator --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
 claude plugin list
 ```
 
-Первая команда ничего не ставит — она добавляет маркетплейс. Ставит только вторая, и снимается
-она одной строкой: `claude plugin uninstall jadlis-plugin-creator@jadlis --keep-data`.
+Первая команда сама добавляет маркетплейс `jadlis`, если его ещё нет, и ставит плагин. Снимается
+плагин одной строкой: `claude plugin uninstall jadlis-plugin-creator@jadlis --keep-data`.
+
+Если Claude Code старше 2.1.292 — ключа `--marketplace` у него нет. Тогда выполни две команды:
+первая добавляет маркетплейс, вторая ставит плагин.
+
+```
+claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
+claude plugin install jadlis-plugin-creator@jadlis
+```
 
 **в) Короткая команда.** Открой Claude Code в рабочем клоне своего репозитория и набери:
 

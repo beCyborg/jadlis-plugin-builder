@@ -1,6 +1,6 @@
 # Plugin Components Reference
 
-> Last audited against Claude Code docs: 2026-10-02 (v2.1.287, mirror 934d35c9)
+> Last audited against Claude Code docs: 2026-10-14 (v2.1.300, mirror 305bb5ef)
 
 Every component type a plugin can ship, the constraints that break plugins in practice, and how files are resolved on disk. Manifest fields and path variables: see `manifest-reference.md`. Mods: `mods.md`. Shared-daemon MCP patterns: `mcp-patterns.md`.
 
@@ -44,13 +44,15 @@ Every component type a plugin can ship, the constraints that break plugins in pr
 
 | Supported frontmatter | Notes |
 |---|---|
-| `name`, `description` | Namespaced as `my-plugin:code-reviewer` in the @-mention typeahead |
+| `name`, `description` | Namespaced as `my-plugin:code-reviewer` in the @-mention typeahead. `name` ≤ 256 characters, no `:`, not starting with `-` (`sub-agents.md §Frontmatter reference`; the 256 cap is v2.1.292+, changelog 2.1.292) |
 | `model`, `effort`, `maxTurns` | Model/effort choice: see skill-builder `references/model-routing.md` |
-| `tools`, `disallowedTools` | |
-| `skills`, `memory`, `background` | |
+| `tools`, `disallowedTools` | MCP entries: an exact tool name, or `mcp__<server>` / `mcp__<server>__*` for a whole server (`sub-agents.md §Available tools`). **Since v2.1.299 an entry reaches only the server whose whole normalized name it spells** — `mcp__a` no longer covers servers `a__b` or `a_`, and a server whose name contains `__` must be listed as `mcp__<whole name>__*` (changelog 2.1.299). For a plugin's own server write `mcp__plugin_<plugin>_<server>__*` (§3) |
+| `skills` | Preloads full skill content — **at most the first 32 distinct names** (v2.1.295+); the rest stay invokable through the Skill tool (`sub-agents.md §Preload skills into subagents`, changelog 2.1.295) |
+| `memory`, `background` | |
 | `omitClaudeMd` | v2.1.271+ |
 | `color`, `experimental.cacheTtl` | |
 | `isolation` | **Only** valid value is `"worktree"` |
+| `autoCompactWindow` | v2.1.296+: the subagent auto-compacts earlier than the main conversation's window (changelog 2.1.296: "subagent frontmatter and `--agents` definitions"). **Not yet in the docs mirror** — neither `sub-agents.md §Frontmatter reference` nor the plugin-agent list in `plugins__components.md §Frontmatter fields in plugin agents` names it, so whether a *plugin* agent honours it and which values it takes are unconfirmed. The settings key of the same name takes tokens `100000`–`1000000` (`settings-reference.md §autoCompactWindow`). Older CLIs ignore the unknown field |
 
 **Ignored in plugin agents: `permissionMode`, `hooks`, `mcpServers`, `initialPrompt`** (`plugins__components.md §Agents`). The agent loads with those fields dropped — add hooks and MCP servers as plugin components instead, and don't ship an agent whose behaviour depends on them.
 
@@ -63,7 +65,7 @@ Every component type a plugin can ship, the constraints that break plugins in pr
 | No `name` | Named after the file: `agents/reviewer.md` in `my-plugin` → `my-plugin:reviewer` |
 | Frontmatter doesn't parse | Named after the file, description becomes `Agent from my-plugin plugin`, **every field in the file is ignored** |
 
-Project, user, and managed agents are *skipped* in both cases. So a plugin agent with a typo'd frontmatter loads silently with none of its settings applied — find these with `claude plugin validate ./my-plugin` (with a manifest) or `claude plugin validate ./my-plugin/agents` (no manifest, v2.1.233+).
+Project, user, and managed agents are *skipped* in both cases. So a plugin agent with a typo'd frontmatter loads silently with none of its settings applied — find these with `claude plugin validate ./my-plugin` (with a manifest) or `claude plugin validate ./my-plugin/agents` (no manifest, v2.1.233+). A field name Claude Code doesn't recognize is ignored without an error (`sub-agents.md §Frontmatter reference`); since v2.1.296 `claude --debug` names unrecognized frontmatter fields in agent files, with a hint for likely typos (changelog 2.1.296).
 
 ## 3. Hooks
 
@@ -100,14 +102,21 @@ Classic hooks need the **outer `{"hooks": …}` wrapper** — the config is not 
 
 **Hook types (5):** `command` (shell), `http` (POSTs the event JSON), `mcp_tool` (calls a tool on a configured MCP server), `prompt` (LLM evaluation, `$ARGUMENTS` placeholder), `agent` (agentic verifier with tools).
 
+**Fail closed with `onFailure: "block"`** (v2.1.295+, `command` and `http` hooks only; `hooks.md §Block the action when a hook fails`, lines ~904–950). By default (`"continue"`) a hook that fails or times out lets the action through, so a guard with a wrong path or a crashing script guards nothing (`hooks.md` ~866, ~878). With `"block"`, each of these counts as a failure and acts like exit code 2 on that event (on `PermissionRequest` it denies): the hook can't start; a command hook exits with a code other than 0 or 2 (even if it printed an allowing JSON); an HTTP error or non-2xx; a timeout; output that fails JSON parsing or schema validation. It has **no effect** on `Stop`, `SubagentStop`, `TaskCompleted`, `TeammateIdle`, or on `async`/`asyncRewake` command hooks. Older CLIs don't know the field — a guard that must fail closed on them still needs its own error handling.
+
+```json
+{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/guard.js"], "onFailure": "block" }
+```
+
 **Targeting the plugin's own MCP server requires scoped names** (`plugins__components.md §MCP servers`) — the single most common silent failure:
 
 | Field | Value |
 |---|---|
 | Tool `matcher` / `if` | `mcp__plugin_<plugin-name>_<server-name>__<tool>` |
 | `mcp_tool` hook `server` | `plugin:<plugin-name>:<server-name>` |
+| Agent `tools:` / `disallowedTools`, permission rules | `mcp__plugin_<plugin-name>_<server-name>__<tool>`, or `…__*` for the whole server |
 
-A matcher written against the bare server key **never fires**.
+A matcher written against the bare server key **never fires**. Since v2.1.299 MCP allow rules and agent `tools:` entries reach **only the server whose whole normalized name they spell** — `mcp__a` no longer allows a server named `a__b` or `a_`, and a server whose name contains `__` is written `mcp__<whole name>__*` (changelog 2.1.299). An entry that used to cover a second server by accident stops doing so after the upgrade.
 
 ## 4. MCP servers
 
@@ -127,7 +136,7 @@ A matcher written against the bare server key **never fires**.
 
 **Required:** `command` (binary, must be in PATH) and `extensionToLanguage` (extension → language id).
 
-**Optional:** `args`, `transport`, `env`, `initializationOptions`, `settings`, `workspaceFolder`, `startupTimeout`, `shutdownTimeout`, `restartOnCrash` (default `true`), `maxRestarts`, `diagnostics` (default `true`).
+**Optional:** `args`, `transport`, `env`, `initializationOptions`, `settings`, `workspaceFolder`, `startupTimeout`, `shutdownTimeout`, `restartOnCrash` (default `true`), `maxRestarts`, `diagnostics` (default `true`), `requestTimeout` (ms, default `60000`; **v2.1.288+** — a request the server never answers fails after that; `plugins__manifest-reference.md §lspServers`, ~line 338). LSP configs are strict objects (`manifest-reference.md §5`), so on an older CLI the key is presumably an unknown key that stops the plugin loading (inference, not tested) — gate it like `restartOnCrash` below.
 
 - `transport` accepts `socket`, but **every server actually runs over stdio**, so the stdout rules below apply universally.
 - `restartOnCrash` and `shutdownTimeout` require **v2.1.205+**. Before that the schema accepted them but setting either made Claude Code skip the server entirely, visible only in `claude --debug`.

@@ -1,6 +1,6 @@
 # plugin.json Manifest Reference
 
-> Last audited against Claude Code docs: 2026-10-02 (v2.1.287, mirror 934d35c9)
+> Last audited against Claude Code docs: 2026-10-14 (v2.1.300, mirror 305bb5ef)
 
 Complete reference for `.claude-plugin/plugin.json` — every field, path resolution, user configuration, dependencies, and path variables.
 
@@ -63,6 +63,18 @@ Complete reference for `.claude-plugin/plugin.json` — every field, path resolu
 Only `validate`, `claude plugin init` and `claude plugin tag` check this — Claude Code still installs and loads such a plugin, so the check is yours (preflight enforces it). Since v2.1.285 installation refuses a plugin whose id differs from an installed one only by `.`, `-`, `@` or (macOS, Windows) capitals.
 
 **A marketplace entry can rename the plugin.** When the entry lists a different `name`, the entry name keys `enabledPlugins`, while components are namespaced under the manifest name (`plugins__manifest-reference.md §Metadata precedence`). Keep the two equal (`plugins__create-marketplace.md §Keep the entry name and the manifest name the same`); preflight warns on a mismatch.
+
+### Skill, command and agent names inside the plugin
+
+The plugin `name` rules above don't cover component names. These do (changelog-only where noted — the docs mirror has no section for them yet):
+
+| Rule | Effect | Since |
+|---|---|---|
+| A skill or command whose **file or folder name** contains hidden, direction-changing or blank-like characters (zero-width and bidi marks, odd spaces), `<` or `>` | **Not offered until renamed**; a frontmatter `name:` containing them is **ignored** | v2.1.299 (changelog 2.1.299) |
+| A skill's or plugin file's `name` longer than 256 characters | Ignored | v2.1.292 (changelog 2.1.292) |
+| An agent `name` longer than 256 characters, containing `:`, or starting with `-` | Rejected — a plugin agent then falls back to the file name (`components.md §2`) | 256 cap v2.1.292; `sub-agents.md §Frontmatter reference` |
+
+Keep skill folder names and `name:` to plain kebab-case ASCII. When Claude Code compares skill names it ignores case, spacing and invisible characters (`skills.md` ~286), so look-alike names collide rather than coexist. A folder name that differs from the SKILL.md `name` is listed under both names since v2.1.290 (changelog 2.1.290).
 
 ---
 
@@ -236,7 +248,7 @@ All three are exported as environment variables to hook processes and MCP/LSP su
 | Hook and monitor commands | Anywhere |
 | MCP `stdio` servers | `command`, `args`, `env` |
 | MCP `http` / `sse` / `ws` servers | `url`, `headers`, `headersHelper` |
-| LSP servers | `command`, `args`, `env`, `workspaceFolder` |
+| LSP servers | `command`, `args`, `env`, `workspaceFolder` — and, since v2.1.288, `initializationOptions` and `settings` (changelog 2.1.288 fixed literal `${user_config.*}` / `${CLAUDE_PLUGIN_ROOT}` reaching the server there; the docs table still lists only the four fields) |
 
 **Quoting.** Prefer hook exec form with `args` — each path arrives as one argument with no quoting. In shell-form hooks and monitor commands, wrap in double quotes: `"${CLAUDE_PLUGIN_ROOT}"/scripts/process.sh`.
 

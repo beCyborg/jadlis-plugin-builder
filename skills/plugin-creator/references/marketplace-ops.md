@@ -1,6 +1,6 @@
 # Marketplace Operations
 
-> Last audited against Claude Code docs: 2026-10-02 (v2.1.287, mirror 934d35c9)
+> Last audited against Claude Code docs: 2026-10-14 (v2.1.300, mirror 305bb5ef)
 
 Everything about `marketplace.json`: schema, the seven plugin sources, authentication, hosting, org distribution, managed restrictions, version channels, renames, and the marketplace CLI. Canon pointers use these shorthands for the docs mirror — `MR` = `plugins__marketplace-reference.md`, `HM` = `plugins__host-marketplace.md`, `L` = `plugins__loading.md`, `D` = `plugins__dependencies.md`, `O` = `plugins__org.md`, `I` = `plugins__install.md`, `CLI` = `plugins__cli-reference.md` — followed by the section heading.
 
@@ -24,13 +24,15 @@ Optional top level (`MR §Top-level fields`):
 
 ### Reserved marketplace names
 
-Full, current list: `MR §Reserved names` — re-read it before naming a marketplace. Classes (v2.1.287):
+Full, current list: `MR §Reserved names` — re-read it before naming a marketplace. Classes (v2.1.300):
 
 - **Official / community / directory names**: `claude-code-marketplace`, `claude-code-plugins`, `claude-plugins-official`, `anthropic-marketplace`, `anthropic-plugins`, `agent-skills`, `anthropic-agent-skills`, `life-sciences`, `knowledge-work-plugins`, `claude-for-legal`, `claude-for-financial-services`, `financial-services-plugins`, `first-party-plugins`, `claude-tag-plugins`, `claude-community`, `claude-plugins-community`, `healthcare`, `anthropic-plugin-directory`, `claude-plugin-directory` — reserved unless the marketplace comes from `github.com/anthropics/`.
 - **Impersonations**: `official-claude-plugins`, `claude-plugins-v2`, any name with a non-ASCII character; and (v2.1.280+) another spelling of a reserved name — trailing dot, or a symbol other than `_` in place of `-` (`claude.code.plugins`).
 - **Names Claude Code uses itself**: `inline` (`--plugin-dir`), `builtin`, `skills-dir`, `synced`, `claude-plugin-test`.
 - **Package-manager names** (v2.1.275+): `npm`, `pip`, `uv`, `cargo`, `github`, `gh`, in any casing.
 - **`claudeai-*`**: reserved for marketplaces hosted on claude.ai.
+- **JavaScript object member names** (v2.1.296+): `constructor`, `hasOwnProperty`, `isPrototypeOf`, `propertyIsEnumerable`, `toLocaleString`, `toString`, `valueOf` — `marketplace add` refuses them with `Claude Code reserves this name and cannot register a marketplace under it`.
+- **The download folder of a registered GitHub marketplace** (v2.1.290+): a marketplace added from `github` source `acme/x-tools` downloads into a folder `acme-x-tools`; while it is registered under another name, a *different* marketplace named `acme-x-tools` is refused after download (`Can't use the marketplace name "acme-x-tools"`). Avoid `<owner>-<repo>` of someone else's GitHub marketplace as your `name`.
 
 The check runs **on every marketplace load, not only on add**. A marketplace registered before a name became reserved stops loading (v2.1.282+: `Claude Code refuses the marketplace name "<name>"`); removing it uninstalls its plugins and deletes their data, so re-add under a different name deliberately.
 
@@ -153,6 +155,9 @@ Treat the map as **append-only**: keep old entries forever and add a second entr
 | `claude plugin marketplace list [--json]` | JSON adds `installLocation` (local cache path) plus source-specific `repo` / `url` / `path`, and `ref` when pinned. |
 | `claude plugin marketplace remove <name> [--scope]` | `<name>` is the name from `marketplace.json`, not the source you added. **Removing from the last scope uninstalls the plugins installed from it** — use `update` to refresh instead. |
 | `claude plugin marketplace update [name]` | Updates to the latest commit of the pinned `ref` (not the default branch). Seed-managed marketplaces are skipped; `remove`/`update` fail against them outright. |
+| `claude plugin install <plugin> --marketplace <source>` | **v2.1.292+.** Bare plugin name (no `@marketplace`) plus any `marketplace add` source form. Adds the marketplace when it isn't added yet — with no confirmation step, under the same org policy checks as `marketplace add`, always declared in **user** settings even with `--scope project` — then installs; an already-added marketplace from that source is reused (`I §Add a marketplace and install in one command`, `CLI §plugin install`). In a session: `/plugin install <plugin> --marketplace <source>` (v2.1.275+; asks before adding; the source can't contain spaces). This is the README install line (`repo-standard.md` item 7). |
+
+**Settings-file warning** (v2.1.295+, changelog 2.1.295): `install`, `enable`, `disable` and `marketplace add` warn when the settings file they write to does not load. Fix the named file (`claude -p` also lists the invalid entry on stderr since v2.1.299, changelog 2.1.299).
 
 ## 13. Auto-update is OFF by default for your recipients
 
