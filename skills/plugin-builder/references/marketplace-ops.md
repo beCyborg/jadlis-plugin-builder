@@ -1,6 +1,6 @@
 # Marketplace Operations
 
-> Last audited against Claude Code docs: 2026-10-14 (v2.1.300, mirror 305bb5ef)
+> Last audited against Claude Code docs: 2026-10-17 (v2.1.302, mirror da8a6ce9)
 
 Everything about `marketplace.json`: schema, the seven plugin sources, authentication, hosting, org distribution, managed restrictions, version channels, renames, and the marketplace CLI. Canon pointers use these shorthands for the docs mirror — `MR` = `plugins__marketplace-reference.md`, `HM` = `plugins__host-marketplace.md`, `L` = `plugins__loading.md`, `D` = `plugins__dependencies.md`, `O` = `plugins__org.md`, `I` = `plugins__install.md`, `CLI` = `plugins__cli-reference.md` — followed by the section heading.
 
@@ -141,7 +141,9 @@ A `command` source always derives its version from the produced content: a 12-ch
 
 `HM §Rename or remove a plugin`. A plugin's `name` is its stable identifier (`enabledPlugins`, `pluginConfigs`, install commands). To change only the label, set `displayName` and leave `name` alone. To really rename or remove, add a top-level `renames` entry mapping the former name to the new name or to `null` (**v2.1.193+**; earlier versions ignore the field and report `plugin-not-found`).
 
-At startup Claude Code follows the map: it loads the plugin under the new name, shows a one-line notice (`Renamed to "code-formatter" in the "acme-tools" marketplace`), and rewrites the key in `enabledPlugins` and `pluginConfigs` across user, project, and local scopes — so the notice appears once. A `null` entry drops the key and reports the removal. **A remote-sourced plugin (`github`, `npm`, …) reports `plugin-cache-miss` after a rename and needs one `/plugin install`.** Managed and other read-only scopes can't be rewritten, so the notice recurs until an admin edits them.
+At startup Claude Code follows the map: it loads the plugin under the new name, shows a one-line notice (`Renamed to "code-formatter" in the "acme-tools" marketplace`), and rewrites the key in `enabledPlugins` and `pluginConfigs` across user, project, and local scopes — so the notice appears once. A `null` entry drops the key and reports the removal. **For a marketplace the user added from a git repository or URL, the renamed plugin then reports `Plugin "<name>" not cached at <path>` until the user runs `/plugin install <new-name>@<marketplace>` once in a session** (`HM §Migrate users with a renames map`; shell equivalent `claude plugin install <new-name>@<marketplace>` + `/reload-plugins`, `T §Plugin "<name>" not cached at <path>`). Managed and other read-only scopes can't be rewritten, so the notice recurs until an admin edits them.
+
+The house marketplace `jadlis` is added from `https://gitlab.com/beCyborg/jadlis-hub.git` and its entries are `url`-sourced, so **every rename there needs that one install from each recipient** — put the exact line in the CHANGELOG and release notes. Rename checklist, in order: (1) bump the plugin to a new **major** version under the new `name` in `plugin.json`; (2) in the marketplace repo, rename the entry, update its `source`/`ref`, and add `"renames": {"<old>": "<new>"}`; (3) `claude plugin validate .` on the marketplace (rejects a chain that `does not resolve`); (4) release notes: the notice users see and the `/plugin install <new>@<marketplace>` line. The skill name and slash command inside the plugin are separate — renaming the plugin changes `/<plugin>:<skill>`, renaming the skill folder changes the bare `/<skill>`.
 
 Treat the map as **append-only**: keep old entries forever and add a second entry for a second rename rather than editing the first — chains are followed. `claude plugin validate .` rejects a chain that forms a cycle or doesn't terminate at `null` or a listed plugin.
 

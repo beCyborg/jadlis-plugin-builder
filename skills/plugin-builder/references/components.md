@@ -1,6 +1,6 @@
 # Plugin Components Reference
 
-> Last audited against Claude Code docs: 2026-10-14 (v2.1.300, mirror 305bb5ef)
+> Last audited against Claude Code docs: 2026-10-17 (v2.1.302, mirror da8a6ce9)
 
 Every component type a plugin can ship, the constraints that break plugins in practice, and how files are resolved on disk. Manifest fields and path variables: see `manifest-reference.md`. Mods: `mods.md`. Shared-daemon MCP patterns: `mcp-patterns.md`.
 
@@ -52,7 +52,7 @@ Every component type a plugin can ship, the constraints that break plugins in pr
 | `omitClaudeMd` | v2.1.271+ |
 | `color`, `experimental.cacheTtl` | |
 | `isolation` | **Only** valid value is `"worktree"` |
-| `autoCompactWindow` | v2.1.296+: the subagent auto-compacts earlier than the main conversation's window (changelog 2.1.296: "subagent frontmatter and `--agents` definitions"). **Not yet in the docs mirror** — neither `sub-agents.md §Frontmatter reference` nor the plugin-agent list in `plugins__components.md §Frontmatter fields in plugin agents` names it, so whether a *plugin* agent honours it and which values it takes are unconfirmed. The settings key of the same name takes tokens `100000`–`1000000` (`settings-reference.md §autoCompactWindow`). Older CLIs ignore the unknown field |
+| `autoCompactWindow` | v2.1.296+: a token count `100000`–`1000000` that makes this subagent auto-compact earlier than the window it inherits; listed among the supported plugin-agent fields (`plugins__components.md §Frontmatter fields in plugin agents`, `sub-agents.md §Set the auto-compact window for one subagent`). Write a plain integer — `200k` reads as 200, is out of range and is ignored (`claude --debug` logs `invalid autoCompactWindow`). `CLAUDE_CODE_AUTO_COMPACT_WINDOW` overrides it, and it has no effect when the whole session runs as the agent (`--agent`) |
 
 **Ignored in plugin agents: `permissionMode`, `hooks`, `mcpServers`, `initialPrompt`** (`plugins__components.md §Agents`). The agent loads with those fields dropped — add hooks and MCP servers as plugin components instead, and don't ship an agent whose behaviour depends on them.
 
@@ -65,7 +65,9 @@ Every component type a plugin can ship, the constraints that break plugins in pr
 | No `name` | Named after the file: `agents/reviewer.md` in `my-plugin` → `my-plugin:reviewer` |
 | Frontmatter doesn't parse | Named after the file, description becomes `Agent from my-plugin plugin`, **every field in the file is ignored** |
 
-Project, user, and managed agents are *skipped* in both cases. So a plugin agent with a typo'd frontmatter loads silently with none of its settings applied — find these with `claude plugin validate ./my-plugin` (with a manifest) or `claude plugin validate ./my-plugin/agents` (no manifest, v2.1.233+). A field name Claude Code doesn't recognize is ignored without an error (`sub-agents.md §Frontmatter reference`); since v2.1.296 `claude --debug` names unrecognized frontmatter fields in agent files, with a hint for likely typos (changelog 2.1.296).
+Project, user, and managed agents are *skipped* in both cases. So a plugin agent with a typo'd frontmatter loads silently with none of its settings applied — find these with `claude plugin validate ./my-plugin` (with a manifest) or `claude plugin validate ./my-plugin/agents` (no manifest, v2.1.233+). A field name Claude Code doesn't recognize is ignored without an error (`sub-agents.md §Frontmatter reference`); since v2.1.296 the debug log names up to five unrecognized top-level fields with the likely intended name — search `~/.claude/debug/<session-id>.txt` for `does not recognize or apply` (`sub-agents.md §Supported frontmatter fields`).
+
+**Fork subagents in headless runs (v2.1.302).** Fork mode (`subagent_type: "fork"`) is now on by default in `claude -p`, the Agent SDK, the desktop app and VS Code, as it already was in the terminal; `CLAUDE_CODE_FORK_SUBAGENT=0` turns it off (changelog 2.1.302 — the mirror's `sub-agents.md §Turn fork mode on or off` still says off in `-p`/SDK). Where fork mode is on, subagents run in the background. For a plugin this changes headless smoke tests and `claude plugin eval` runs: Claude can fork the conversation instead of calling your agent, so pin the behaviour you score (`release-checklist.md §5b`).
 
 ## 3. Hooks
 
@@ -107,6 +109,20 @@ Classic hooks need the **outer `{"hooks": …}` wrapper** — the config is not 
 ```json
 { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/guard.js"], "onFailure": "block" }
 ```
+
+**Hooks that start a background process** (`hooks.md §Hooks that start a background process`). For a non-async command hook Claude Code stops reading output shortly after the hook's own process exits, so a deny that a background child prints later does not block. Print the decision first, then start the child with its stdout and stderr redirected (`"$CLAUDE_PLUGIN_ROOT"/scripts/upload.sh >/dev/null 2>&1 &`), and keep the check's exit code (`check.sh || exit $?`). A script that prints an allow and then starts a child **without** redirecting its output gets the tool call **blocked**, with `refusing to honor the suspect capture` in the hook error.
+
+**Rewriting tool input (v2.1.300).** `updatedInput` from `PreToolUse` and `PermissionRequest` hooks is validated like Claude's own input: unknown keys are dropped, and input the tool rejects **denies the call** (changelog 2.1.300; not yet in `hooks.md`). Return the tool's full, valid argument object: a misspelled key is now dropped silently, and an object the tool rejects fails the call.
+
+**Concurrency (v2.1.302).** At most 12 `prompt` / `agent` hooks of one event run at a time; the rest wait their turn (changelog 2.1.302). A plugin that adds many LLM-judged hooks to one event slows that event down rather than failing.
+
+**Other behaviour that changed:**
+
+- `PreToolUse` / `PermissionRequest` hooks whose matching fails, or whose tool input can't be serialized to JSON, now block the call instead of being skipped (changelog 2.1.288).
+- `UserPromptSubmit` runs before a skill or custom command expands, so blocking `/my-skill` also stops its `` !`cmd` `` injections; the hook sees the line as typed — match the skill's name or arguments with `UserPromptExpansion` (`hooks.md §UserPromptSubmit`, changelog 2.1.299). A skill's own frontmatter `UserPromptSubmit` hook first runs on the prompt **after** the one that invoked the skill (changelog 2.1.299).
+- A plugin's `UserPromptSubmit` hook (like `Stop`, `SubagentStop`, `TaskCompleted`) that exits 2 with empty stdout and a missing-file message on stderr counts as a non-blocking error, not a block (`hooks.md §Exit code output`) — a mistyped script path never blocks the prompt.
+- Agent hooks honour their own `model` since v2.1.300 (aliases resolve; an unavailable model falls back to the caller's instead of allowing the action).
+- Mods differ: an action a hooks-module hook can block is refused, not let through, when the hook can't be handed the event or can't answer (changelog 2.1.299, `mods.md §4`).
 
 **Targeting the plugin's own MCP server requires scoped names** (`plugins__components.md §MCP servers`) — the single most common silent failure:
 

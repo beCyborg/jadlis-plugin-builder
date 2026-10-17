@@ -1,6 +1,6 @@
 # Plugin Release Checklist
 
-> Last audited against Claude Code docs: 2026-10-14 (v2.1.300, mirror 305bb5ef)
+> Last audited against Claude Code docs: 2026-10-17 (v2.1.302, mirror da8a6ce9)
 
 Ordered checklist for shipping a version of a plugin or a marketplace. Canon shorthands for the docs mirror: `CLI` = `plugins__cli-reference.md`, `D` = `plugins__dependencies.md`, `T` = `plugins__troubleshooting.md`, `PE` = `plugin-evals.md`, followed by the section heading. Steps 4–9 are the ones that silently ship nothing when skipped.
 
@@ -31,7 +31,7 @@ Agents or skills that set `model:` / `effort:` — model/effort choice: see skil
 Run the local guardrail before invoking the CLI — it catches the cheap mistakes without a Claude Code process:
 
 ```bash
-python3 "{PLUGIN_ROOT}/scripts/preflight_plugin.py" <repo-root>    # {PLUGIN_ROOT} = plugin-creator's skill dir; add --json for CI
+python3 "{PLUGIN_ROOT}/scripts/preflight_plugin.py" <repo-root>    # {PLUGIN_ROOT} = plugin-builder's skill dir; add --json for CI
 ```
 
 It runs `claude plugin validate` on the root and on every local plugin dir first (skipped with a warning when `claude` isn't on PATH; `--no-validate` skips it on purpose), then the house checks listed in `repo-standard.md §preflight_plugin.py invariants`: manifests without a **UTF-8 BOM** (before v2.1.246 a BOM in `plugin.json` failed the install), reserved plugin names, entry name = manifest name, version in exactly one place, `hooks.json` wrapper or mod `modules`, MCP variable and endpoint checks. It accepts a marketplace repo or a single plugin directory. Preflight is an authoring guardrail; `claude plugin validate` is the canon.
@@ -78,7 +78,7 @@ claude plugin eval . --trust-plugin --model <pinned model id> --judge-model <pin
 
 Requires v2.1.269+ (and git 2.31+ when git is installed). Every run and judge call is billed to the account, so set a ceiling. Pin `--model`/`--judge-model` so a model rollout isn't read as a regression; `--threshold` (default 1.0) sets the pass score; add `evals/results/` to `.gitignore`. A suite lives in `evals/` (or the manifest's `experimental.evals`); `claude plugin eval init` drafts one (`PE §Run evals in CI`). Evals for one skill's wording/triggering → skill-builder; `claude plugin eval` and skill-creator-style `evals/evals.json` don't read each other's files (`PE`).
 
-**Keeping built-in tools out of a run** (v2.1.299+, changelog 2.1.299; confirmed in `claude plugin eval --help` on 2.1.300 — not yet in `PE`): `--disallow-tools <tools...>` removes built-in tools from Claude in every case, even if granted (e.g. `--disallow-tools Agent TaskStop`); the per-case field `disallowed_tools` (a list, next to `allowed_tools` in `prompt.md` frontmatter or `case.yaml`) does the same for one case, and the two lists are combined. Only built-in tools are accepted — any other name fails the case with `… cannot be disallowed: it is not a built-in tool` (strings in the 2.1.300 binary). Use it when a skill must be scored without delegating to subagents.
+**Keeping built-in tools out of a run** (v2.1.299+, changelog 2.1.299; confirmed in `claude plugin eval --help` on 2.1.300 — not yet in `PE`): `--disallow-tools <tools...>` removes built-in tools from Claude in every case, even if granted (e.g. `--disallow-tools Agent TaskStop`); the per-case field `disallowed_tools` (a list, next to `allowed_tools` in `prompt.md` frontmatter or `case.yaml`) does the same for one case, and the two lists are combined. Only built-in tools are accepted — any other name fails the case with `… cannot be disallowed: it is not a built-in tool` (strings in the 2.1.300 binary). Use it when a skill must be scored without delegating to subagents. Since v2.1.302 fork subagents are on by default in `claude -p` and the SDK too (changelog 2.1.302), so a run can fork the conversation where it used to answer inline; add `Agent` to `--disallow-tools`, or set `CLAUDE_CODE_FORK_SUBAGENT=0` in the run's environment, when the score must not depend on that (`components.md §2`).
 
 **API errors now fail the suite** (v2.1.299+, `PE §"ended on an API error and scored 0 without grading"`): a run that ends on an API error scores 0 without grading and makes the command exit 1. Before v2.1.299 such a run was graded on what it had produced, so an older green result can hide refused runs.
 

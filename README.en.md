@@ -7,20 +7,20 @@ version in exactly one place, changelog, tag, release and an install into a clea
 the recipient gets the line they have to run on their side.
 
 ```
-claude plugin install jadlis-plugin-creator --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
+claude plugin install jadlis-plugin-builder --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
 ```
 
 On Claude Code older than 2.1.292, run two commands instead:
 
 ```
 claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
-claude plugin install jadlis-plugin-creator@jadlis
+claude plugin install jadlis-plugin-builder@jadlis
 ```
 
 No keys are needed; what is needed is git, an authenticated `gh` and `claude plugin` itself — the
 tag, the release and the verification install all rest on them.
 
-![One track from the folder of finished work to a published release, with the last arrow going to the person who already installed the plugin](docs/img/hero-jadlis-plugin-creator.webp)
+![One track from the folder of finished work to a published release, with the last arrow going to the person who already installed the plugin](docs/img/hero-jadlis-plugin-builder.webp)
 
 In words: on the left a folder of finished work, on the right a published release, and between them
 the steps, each closed by a check, with the last arrow leading to the person who already has the
@@ -36,11 +36,11 @@ This is my workbench published as it is, not a product: whatever I stopped using
 | **Where the edits live.** The marketplace clone is right there, and editing straight inside it is the easiest route. | It does not tell the paths apart and will suggest editing wherever a file happens to be open. | Work happens in a separate dev clone, the branch is pushed immediately, and `claude plugin` operations run only after the push: the background refresh resets the marketplace clone to origin, local branches included. |
 | **What "checked" means.** By eye across the JSON and the folder layout, as far as a look reaches. | It will say the schema looks right. | First the offline preflight for the house standard, then `claude plugin validate --strict` in every mode that fits the layout, then an install into a clean environment with a sentinel skill invoked: the validator is not the loader. |
 | **How a version ships.** The steps run from memory, and a skipped one stays invisible until a recipient complains. | It will list the steps, but will not check that the tag was created and the release published. | The tag `{plugin-name}--v{version}` is made by `claude plugin tag --push`, which demands a clean tree and manifests that agree; the release goes on top of the tag via `gh`, and the update line is repeated in the release notes. |
-| **Moving a legacy repo.** The consolidated marketplace exists, and people's installs stay pointed at the old one. | It will suggest renaming the plugin — and the installs break. | The plugin name stays put, a true rename goes through the append-only `renames` map, the old marketplace stays readable until recipients have moved, and plugins with a remote source are told about the reinstall in advance. |
+| **Moving a legacy repo.** The consolidated marketplace exists, and people's installs stay pointed at the old one. | It will suggest renaming the plugin — and the installs break. | The plugin name stays put, a true rename goes through the append-only `renames` map, the old marketplace stays readable until recipients have moved, and recipients of a git marketplace get the `/plugin install` line under the new name in advance. |
 
 ## How it works
 
-![The task goes into one of four modes, preflight and validation gate the version bump, then the tag, the release and the verification install](docs/img/how-jadlis-plugin-creator.webp)
+![The task goes into one of four modes, preflight and validation gate the version bump, then the tag, the release and the verification install](docs/img/how-jadlis-plugin-builder.webp)
 
 Going in — a folder of finished work, or a repo that is due for a release.
 Inside — the route for the mode: a scaffold to the house standard, offline preflight and `claude
@@ -69,13 +69,13 @@ errors and warnings, with the fix on each one.
 **a) Text to paste to an agent.** Copy the whole thing into a Claude Code chat:
 
 ```
-You are the installer. Install the plugin jadlis-plugin-creator from the jadlis marketplace on this Mac.
+You are the installer. Install the plugin jadlis-plugin-builder from the jadlis marketplace on this Mac.
 Run exactly these commands, verbatim, shortening nothing:
 1. claude --version — if the version is below 2.1.292, run these two commands instead of step 2:
    claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
-   claude plugin install jadlis-plugin-creator@jadlis
-2. claude plugin install jadlis-plugin-creator --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
-3. claude plugin list — show me the line about jadlis-plugin-creator and its version.
+   claude plugin install jadlis-plugin-builder@jadlis
+2. claude plugin install jadlis-plugin-builder --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
+3. claude plugin list — show me the line about jadlis-plugin-builder and its version.
 This plugin asks for no keys. Check separately and tell me whether this machine has git,
 python3 and an authenticated gh (gh auth status): without them the tag, release and
 verification-install steps will not go through.
@@ -87,28 +87,28 @@ If a command returns an error, stop, show me the output, and do not move to the 
 **b) Commands by hand.**
 
 ```
-claude plugin install jadlis-plugin-creator --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
+claude plugin install jadlis-plugin-builder --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
 claude plugin list
 ```
 
 The first command adds the `jadlis` marketplace when it is not there yet, then installs the plugin.
-One line removes the plugin: `claude plugin uninstall jadlis-plugin-creator@jadlis --keep-data`.
+One line removes the plugin: `claude plugin uninstall jadlis-plugin-builder@jadlis --keep-data`.
 
 Claude Code older than 2.1.292 has no `--marketplace` flag. There, run two commands: the first adds
 the marketplace, the second installs the plugin.
 
 ```
 claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
-claude plugin install jadlis-plugin-creator@jadlis
+claude plugin install jadlis-plugin-builder@jadlis
 ```
 
 **c) The short command.** Open Claude Code in the dev clone of your repo and type:
 
 ```
-/plugin-creator <your task>
+/plugin-builder <your task>
 ```
 
-For example: `/plugin-creator validate the plugin before release`. If it is not found, check the
+For example: `/plugin-builder validate the plugin before release`. If it is not found, check the
 name with `claude plugin list`. Do not run it inside the marketplace clone under
 `~/.claude/plugins/marketplaces/`: the background refresh wipes edits there.
 
@@ -146,12 +146,16 @@ first command you keep the version you installed.
 
 ```
 claude plugin marketplace update jadlis
-claude plugin update jadlis-plugin-creator@jadlis
+claude plugin update jadlis-plugin-builder@jadlis
 claude plugin list
 ```
+
+If you had `jadlis-plugin-creator` installed: the plugin is now `jadlis-plugin-builder`. After
+`claude plugin marketplace update jadlis`, Claude Code shows a one-line rename notice. Then run
+`/plugin install jadlis-plugin-builder@jadlis` once in a session.
 
 Reinstall, if something ended up crooked:
 
 ```
-claude plugin uninstall jadlis-plugin-creator@jadlis --keep-data && claude plugin install jadlis-plugin-creator@jadlis
+claude plugin uninstall jadlis-plugin-builder@jadlis --keep-data && claude plugin install jadlis-plugin-builder@jadlis
 ```

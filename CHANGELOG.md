@@ -1,4 +1,31 @@
-# Changelog — jadlis-plugin-creator
+# Changelog — jadlis-plugin-builder
+
+## [3.0.0] — 2026-10-17 — переименование в `jadlis-plugin-builder` и сверка с Claude Code 2.1.302 / renamed to `jadlis-plugin-builder`, audit to Claude Code 2.1.302
+
+### Для человека
+
+- Плагин теперь называется `jadlis-plugin-builder`. Команда тоже новая: `/plugin-builder`. Старая `/plugin-creator` больше не работает.
+- Новая установка: `claude plugin install jadlis-plugin-builder --marketplace https://gitlab.com/beCyborg/jadlis-hub.git`.
+- Если у тебя стоял `jadlis-plugin-creator`, сначала обнови маркетплейс: `claude plugin marketplace update jadlis`. Claude Code покажет строку `Renamed to "jadlis-plugin-builder"` и сам перепишет имя в настройках.
+- Ты добавил маркетплейс из git, поэтому дальше нужен один шаг руками. Выполни один раз в сессии: `/plugin install jadlis-plugin-builder@jadlis`. До этого плагин покажет ошибку `not cached`.
+- Я сверил справочник по модам с Claude Code 2.1.302. Главное изменение: обработчик `.catch` у хука-охранника срабатывает только при сбое самого хука. События от собственных вызовов охранника его обходят. Ещё в справочнике новые поля и события модов с версиями, с которых они работают.
+- В разделе о хуках три новых правила. Хук с фоновым процессом должен сначала вывести решение. Неверный `updatedInput` теперь отклоняет вызов. На одно событие одновременно работают не больше 12 хуков `prompt` и `agent`.
+- Я исправил описание переименования: шаг `/plugin install` нужен всем, кто добавил маркетплейс из git или по ссылке. Тип источника плагина тут ни при чём.
+
+### For agents
+
+- Breaking: `.claude-plugin/plugin.json` — `name` `jadlis-plugin-creator` → `jadlis-plugin-builder`, version 2.2.0 → 3.0.0, `homepage`/`repository` → `https://gitlab.com/beCyborg/jadlis-plugin-builder`.
+- Breaking: skill folder `skills/plugin-creator/` → `skills/plugin-builder/`, frontmatter `name: plugin-builder`; commands `/plugin-builder` and `/jadlis-plugin-builder:plugin-builder`. Trigger list keeps every RU/EN phrase and adds "plugin builder".
+- Migration (recipients): the hub `jadlis` needs `"renames": {"jadlis-plugin-creator": "jadlis-plugin-builder"}` plus the renamed entry; recipients then run `claude plugin marketplace update jadlis` and once `/plugin install jadlis-plugin-builder@jadlis` (`plugins__host-marketplace.md §Migrate users with a renames map`: a git/URL marketplace reports `Plugin "<name>" not cached at <path>` until that install).
+- Changed: README.md / README.en.md, `docs/img/prompts/jadlis-plugin-builder.md`, images `docs/img/{hero,how}-jadlis-plugin-builder.webp`, `tests/test_preflight_plugin_builder.py`, `evals/ru-trigger-make-plugin/*` — all on the new names. READMEs gain a rename note in the update section. `preflight_plugin.py` keeps its name; old `jadlis-plugin-creator--v*` tags stay.
+- Fixed: `marketplace-ops.md §11` and SKILL.md Migrate step 2 — the post-rename `not cached` error depends on how the marketplace was added (git repo or URL), not on the plugin source type; recipient command is `/plugin install <new>@<marketplace>`. Added a rename checklist for the house marketplace.
+- Changed: `mods.md` fully re-audited (mirror 934d35c9 → da8a6ce9, changelog 2.1.288–2.1.302): `.catch` runs only on throw/timeout and is skipped for events raised beneath the hook's own calls (2.1.301; mirror still documents `next.error.kind: 're-entry'`); `next.called` handler pattern and per-event refusals; transport failures fail closed (2.1.299); `deny` after the tool ran withholds the result (2.1.295); validate `gating hook without .catch` lines (2.1.290) and managed-skip note (2.1.299); `claude plugin test` changes (2.1.292, 2.1.293, 2.1.299: `part: { plugin }`, 10 s served-`$` limit); one hooks module per plugin name; Desktop 2.1.286 / VS Code 2.1.299 support; security notes on `tool.check`, `$.http.fetch`, managed-only `$.prompt.media` / `$.session.identity()`; new `§8` version table (`$.env.set` result, `Input` `rows`, `virtualText`, `prompt.change`, `agent.spawn` rewrite, `$.ui.view`, `Text` `dir`, `Text` typography with `bold` deprecated, `Box` spacing steps, `turn.start` hears subagents, `skill.prompt` fields, `session.append` `queue`, and older 2.1.288–2.1.295 additions). The #92533 worktree bug is marked fixed in 2.1.288.
+- Added: `components.md §3` — hooks that start a background process (`refusing to honor the suspect capture`, `hooks.md §Hooks that start a background process`), `updatedInput` validation (2.1.300), at most 12 `prompt`/`agent` hooks of one event at a time (2.1.302), matching failures block (2.1.288), `UserPromptSubmit` before skill expansion (2.1.299), plugin `UserPromptSubmit` missing-file exit 2 is non-blocking, agent hooks honour `model` (2.1.300).
+- Changed: `components.md §2` — `autoCompactWindow` is now documented (`sub-agents.md`, `plugins__components.md` plugin-agent fields; 100000–1000000, plain integer); unknown-field debug string `does not recognize or apply`; fork subagents on by default in `-p`/SDK/desktop/VS Code (2.1.302; mirror `sub-agents.md` not yet updated).
+- Changed: `manifest-reference.md §2` skill-name rows now follow `skills.md §Characters a skill name can't hold` (plugin skill folders: characters become hyphens; refused frontmatter `name`; `[names]` in the debug log).
+- Changed: `pitfalls.md §12` mods guard semantics; added `§15` guard hooks after 2.1.300–2.1.302. `release-checklist.md §5b` fork note for eval runs.
+- Changed: audit markers → 2026-10-17 (v2.1.302, mirror da8a6ce9) in `mods.md`, `components.md`, `manifest-reference.md`, `marketplace-ops.md`, `pitfalls.md`, `release-checklist.md`; `mcp-patterns.md` and `repo-standard.md` keep 2026-10-14 (no relevant docs change).
+- Unchanged: modes, `preflight_plugin.py` behaviour and its tests.
 
 ## [2.2.0] — 2026-10-14 — установка одной командой и сверка с Claude Code 2.1.300 / one-command install, audit to Claude Code 2.1.300
 

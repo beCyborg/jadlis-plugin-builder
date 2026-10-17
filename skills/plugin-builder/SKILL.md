@@ -1,5 +1,5 @@
 ---
-name: plugin-creator
+name: plugin-builder
 description: >-
   Assemble, validate, release, and migrate Claude Code plugins and plugin
   marketplaces: scaffold a plugin repo to the house GitHub standard, run
@@ -11,8 +11,8 @@ description: >-
   плагина", "обнови маркетплейс", "перенеси плагин", "мигрируй репо",
   "упакуй мод", "make a plugin", "package as a plugin", "package a mod",
   "validate plugin", "release the plugin", "publish plugin version", "plugin
-  marketplace", "migrate plugin repo". DO NOT TRIGGER when: creating or
-  improving a SKILL itself — its content, description, evals, benchmarks
+  marketplace", "migrate plugin repo", "plugin builder". DO NOT TRIGGER when:
+  creating or improving a SKILL itself — its content, description, evals, benchmarks
   (use skill-builder; this skill packages finished work), writing a mod's
   code (Claude Code's built-in plugin-authoring skill), general git/GitHub
   work unrelated to plugins (use /github), installing third-party plugins
@@ -32,7 +32,7 @@ allowed-tools:
   - Bash(mkdir:*)
 ---
 
-# plugin-creator — assemble, validate, release, migrate
+# plugin-builder — assemble, validate, release, migrate
 
 Companion to skill-builder: that one authors skills; this one packages finished
 work into plugins/marketplaces and operates their lifecycle. Orchestration is
@@ -140,8 +140,9 @@ marketplace-consolidation plans).
    repo-standard.md, list of installed recipients if known.
 2. Plan the move: target marketplace + `plugins/<name>/` dir; if the plugin
    name changes, use the append-only `renames` map (marketplace-ops.md
-   §renames; remote-source plugins will hit `plugin-cache-miss` and need a
-   reinstall — say so in the release notes).
+   §11; recipients of a git/URL marketplace see `Plugin "<name>" not cached`
+   until they run `/plugin install <new>@<marketplace>` once — put that line
+   in the release notes).
 3. Execute in a dev clone; run Validate; Release in the TARGET marketplace;
    archive the source repo (README pointer + GitHub archive) only after the
    target release is live.

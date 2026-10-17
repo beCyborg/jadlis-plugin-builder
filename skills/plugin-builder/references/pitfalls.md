@@ -1,6 +1,6 @@
 # Pitfalls — field-tested traps in plugin authoring and distribution
 
-> Last audited against Claude Code docs: 2026-10-14 (v2.1.300, mirror 305bb5ef)
+> Last audited against Claude Code docs: 2026-10-17 (v2.1.302, mirror da8a6ce9)
 
 Battle-tested lessons from operating 10+ marketplaces (beCyborg, 2026-07..09). Each entry: symptom → cause → rule.
 
@@ -52,7 +52,7 @@ The `validate-plugins` action's invariant I8 warns `vendored source './' has no 
 
 ## 12. Mods: fail-open, unsandboxed, version-gated
 
-A mod (`mods.md`) runs inside Claude Code with the user's rights: no sandbox, never install one unread. A hook that throws or times out before `next` is skipped and the event proceeds — a guard needs a `.catch` returning `{ deny }` to fail closed. Mods need Claude Code ≥ 2.1.287. Known on 2.1.287 from the owner's probes (not in the docs): `skill.prompt` is not delivered (anthropics/claude-code#96831); a `tool.call` hook on Bash breaks `isolation: "worktree"` subagents (#92533). A mod shipped from a GitHub/git/URL/npm marketplace counts as the user's, never as the organization's (`plugins__mods__admin.md`).
+A mod (`mods.md`) runs inside Claude Code with the user's rights: no sandbox, never install one unread. A hook that throws or times out before `next` is skipped and the event proceeds — a guard needs a `.catch` that returns the event's refusal (`{ deny }`, `{ drop }`) when `next.called` is false, or it fails open (`plugins__mods__events.md §Handle a hook that fails`). Since v2.1.301 that `.catch` runs **only when the hook itself throws or times out**: events raised beneath the guard's own `$` calls skip the guard without asking its `.catch` (changelog 2.1.301), so a guard never checks what its own calls cause. `claude plugin validate` lists each gating hook without a `.catch` (v2.1.290+). Mods need Claude Code ≥ 2.1.287 (terminal); new props such as `Text` `weight` need 2.1.299+ or the tree doesn't draw (`mods.md §8`). From the owner's 2.1.287 probes: the worktree breakage (#92533) is fixed in 2.1.288; `skill.prompt` delivery (anthropics/claude-code#96831) has no fix entry — re-probe. A mod shipped from a GitHub/git/URL/npm marketplace counts as the user's, never as the organization's (`plugins__mods__admin.md`).
 
 ## 13. Two plugins on one MCP URL — one silently vanishes
 
@@ -63,3 +63,13 @@ Plugin MCP servers are deduplicated by endpoint, not name (`mcp.md §Scope hiera
 Since v2.1.299 an MCP allow rule or an agent `tools:` entry reaches **only the server whose whole normalized name it spells**: `mcp__a` no longer allows a server named `a__b` or `a_` (changelog 2.1.299). An agent or allow-list that worked on 2.1.298 because a short entry happened to cover a second server loses that server's tools after the upgrade — symptom: the subagent reports the tool missing, or fails to launch when no `tools:` entry resolves (`sub-agents.md §Available tools`). Deny and ask rules got the same whole-name matching for servers with `__` in their name (changelog 2.1.299).
 
 **Rule:** list every server by its full name — `mcp__<server>__*` (or `mcp__<server>`) for the whole server, `mcp__<server>__<tool>` for one tool; a server whose name contains `__` only as `mcp__<whole name>__*`. A plugin's own server is `mcp__plugin_<plugin>_<server>__*` (§4). Before a release, check that every `mcp__…` entry in agents and skills' `allowed-tools` spells one whole server name.
+
+## 15. A guard hook that "works" but lets calls through — or blocks everything
+
+Three hook changes turn an old guard into a silent leak or a hard block (`components.md §3`):
+
+- **Background child.** A command hook that forks a helper and exits loses any decision the helper prints later. A hook that prints an allow and then starts a child with stdout/stderr still attached gets the call **blocked** (`refusing to honor the suspect capture`, `hooks.md §Hooks that start a background process`; since v2.1.285 a sync hook ends shortly after its own process exits, changelog 2.1.285 — the refusal's first version is not stated). Rule: decision first, `|| exit $?`, child with `>/dev/null 2>&1 &`.
+- **`updatedInput` rewrites** are validated since v2.1.300: unknown keys are dropped, input the tool rejects denies the call (changelog 2.1.300). A misspelled key used to reach the tool; now it is dropped silently, and an object the tool rejects fails the call. Return the full, valid argument object.
+- **Many LLM hooks on one event** queue: at most 12 `prompt`/`agent` hooks of one event run at a time (changelog 2.1.302). Expect latency, not errors.
+
+**Rule:** after a CLI upgrade, smoke-test every guard once with a deliberately failing check and once with a passing one, and read the hook error text.

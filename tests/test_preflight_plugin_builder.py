@@ -1,4 +1,4 @@
-"""Regression tests for skills/plugin-creator/scripts/preflight_plugin.py.
+"""Regression tests for skills/plugin-builder/scripts/preflight_plugin.py.
 
 Run: uv run --with pytest --with pyyaml pytest tests/ -q
 Never spawns the `claude` CLI (validate=False everywhere).
@@ -7,8 +7,8 @@ import importlib.util
 import json
 from pathlib import Path
 
-SCRIPT = Path(__file__).resolve().parents[1] / "skills" / "plugin-creator" / "scripts" / "preflight_plugin.py"
-_spec = importlib.util.spec_from_file_location("preflight_plugin_creator_under_test", SCRIPT)
+SCRIPT = Path(__file__).resolve().parents[1] / "skills" / "plugin-builder" / "scripts" / "preflight_plugin.py"
+_spec = importlib.util.spec_from_file_location("preflight_plugin_builder_under_test", SCRIPT)
 pf = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(pf)
 

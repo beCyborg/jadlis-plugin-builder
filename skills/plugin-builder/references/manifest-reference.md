@@ -1,6 +1,6 @@
 # plugin.json Manifest Reference
 
-> Last audited against Claude Code docs: 2026-10-14 (v2.1.300, mirror 305bb5ef)
+> Last audited against Claude Code docs: 2026-10-17 (v2.1.302, mirror da8a6ce9)
 
 Complete reference for `.claude-plugin/plugin.json` — every field, path resolution, user configuration, dependencies, and path variables.
 
@@ -66,11 +66,12 @@ Only `validate`, `claude plugin init` and `claude plugin tag` check this — Cla
 
 ### Skill, command and agent names inside the plugin
 
-The plugin `name` rules above don't cover component names. These do (changelog-only where noted — the docs mirror has no section for them yet):
+The plugin `name` rules above don't cover component names. These do (`skills.md §Characters a skill name can't hold` covers the first two rows; the rest are changelog-only where noted):
 
 | Rule | Effect | Since |
 |---|---|---|
-| A skill or command whose **file or folder name** contains hidden, direction-changing or blank-like characters (zero-width and bidi marks, odd spaces), `<` or `>` | **Not offered until renamed**; a frontmatter `name:` containing them is **ignored** | v2.1.299 (changelog 2.1.299) |
+| A skill or command **file or folder name** with a zero-width, control, private-use/unassigned or direction-changing character, a blank other than one plain space between words, `<` or `>` | The skill or command **doesn't load** until renamed — this includes a plugin's `commands/*.md` file. **Exception:** a folder in a plugin's `skills/` (or a manifest `skills` path) still loads, with those characters **turned into hyphens** in its command name | v2.1.299 (changelog 2.1.299) |
+| A frontmatter `name:` with the same characters | The skill loads, but its `name` is **refused**: the `/` menu doesn't show it and typing it doesn't invoke the skill. Find refusals with `claude --debug` → search the log for `[names]` | v2.1.299 |
 | A skill's or plugin file's `name` longer than 256 characters | Ignored | v2.1.292 (changelog 2.1.292) |
 | An agent `name` longer than 256 characters, containing `:`, or starting with `-` | Rejected — a plugin agent then falls back to the file name (`components.md §2`) | 256 cap v2.1.292; `sub-agents.md §Frontmatter reference` |
 

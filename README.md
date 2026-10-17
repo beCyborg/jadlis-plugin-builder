@@ -7,20 +7,20 @@
 строка, которую он выполняет у себя.
 
 ```
-claude plugin install jadlis-plugin-creator --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
+claude plugin install jadlis-plugin-builder --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
 ```
 
 Если Claude Code старше 2.1.292 — выполни две команды:
 
 ```
 claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
-claude plugin install jadlis-plugin-creator@jadlis
+claude plugin install jadlis-plugin-builder@jadlis
 ```
 
 Ключи не нужны; нужны git, авторизованный `gh` и сам `claude plugin` — на них держатся тег, релиз и
 проверочная установка.
 
-![Одна дорожка от папки с работой до опубликованного релиза, и последняя стрелка уходит к тому, кто плагин уже поставил](docs/img/hero-jadlis-plugin-creator.webp)
+![Одна дорожка от папки с работой до опубликованного релиза, и последняя стрелка уходит к тому, кто плагин уже поставил](docs/img/hero-jadlis-plugin-builder.webp)
 
 Текстом: слева папка с готовой работой, справа опубликованный релиз, между ними шаги, каждый из
 которых закрыт проверкой, а последняя стрелка ведёт к человеку, у которого плагин уже установлен.
@@ -35,11 +35,11 @@ claude plugin install jadlis-plugin-creator@jadlis
 | **Где лежат правки.** Клон маркетплейса лежит под рукой, править удобнее всего прямо в нём. | Путей не различает и предложит редактировать там, где открыто. | Работа идёт в отдельном рабочем клоне, ветка пушится сразу, операции `claude plugin` — только после пуша: фоновое обновление сбрасывает клон маркетплейса к origin вместе с локальными ветками. |
 | **Что значит «проверено».** Глазами по JSON и по структуре папок, на что взгляда хватило. | Скажет, что схема выглядит правильной. | Сначала офлайн-префлайт по домашнему стандарту, потом `claude plugin validate --strict` во всех режимах, применимых к раскладке, потом установка в чистое окружение с вызовом контрольного скилла: валидатор — не загрузчик. |
 | **Как выпускается версия.** Шаги идут по памяти, а пропущенный не виден до жалобы получателя. | Перечислит шаги, но не проверит, создан ли тег и опубликован ли релиз. | Тег `{plugin-name}--v{version}` ставится командой `claude plugin tag --push`, которая требует чистого дерева и согласованных манифестов; поверх тега — релиз через `gh`, а строка обновления повторяется в заметках релиза. |
-| **Переезд старого репозитория.** Общий маркетплейс появился, а установки у людей остались на старом. | Посоветует переименовать плагин — и установки отвалятся. | Имя плагина не меняется, переименование идёт через append-only карту `renames`, старый маркетплейс остаётся читаемым, пока получатели не переехали, а плагинам с внешним источником заранее сказано про переустановку. |
+| **Переезд старого репозитория.** Общий маркетплейс появился, а установки у людей остались на старом. | Посоветует переименовать плагин — и установки отвалятся. | Имя плагина не меняется, переименование идёт через append-only карту `renames`, старый маркетплейс остаётся читаемым, пока получатели не переехали, а получателям из git-маркетплейса заранее дана строка `/plugin install` под новым именем. |
 
 ## Как это работает
 
-![Задача уходит в один из четырёх режимов, префлайт и валидация закрывают путь к бампу версии, дальше тег, релиз и проверочная установка](docs/img/how-jadlis-plugin-creator.webp)
+![Задача уходит в один из четырёх режимов, префлайт и валидация закрывают путь к бампу версии, дальше тег, релиз и проверочная установка](docs/img/how-jadlis-plugin-builder.webp)
 
 На входе — папка с готовой работой или репозиторий, который пора выпустить.
 Внутри — маршрут по режиму: каркас по домашнему стандарту, офлайн-префлайт и `claude plugin
@@ -65,13 +65,13 @@ validate --strict`, бамп версии с changelog, тег и релиз, п
 **а) Текст для вставки агенту.** Скопируй целиком в чат Claude Code:
 
 ```
-Ты — установщик. Поставь на этот Mac плагин jadlis-plugin-creator из маркетплейса jadlis.
+Ты — установщик. Поставь на этот Mac плагин jadlis-plugin-builder из маркетплейса jadlis.
 Выполни ровно эти команды, дословно, ничего не сокращая:
 1. claude --version — если версия ниже 2.1.292, вместо шага 2 выполни две команды:
    claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
-   claude plugin install jadlis-plugin-creator@jadlis
-2. claude plugin install jadlis-plugin-creator --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
-3. claude plugin list — покажи мне строку про jadlis-plugin-creator и его версию.
+   claude plugin install jadlis-plugin-builder@jadlis
+2. claude plugin install jadlis-plugin-builder --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
+3. claude plugin list — покажи мне строку про jadlis-plugin-builder и его версию.
 Ключей этот плагин не просит. Проверь и скажи мне отдельно, есть ли на машине git,
 python3 и gh с авторизацией (gh auth status): без них шаги тега, релиза и проверочной
 установки не пройдут.
@@ -83,28 +83,28 @@ python3 и gh с авторизацией (gh auth status): без них шаг
 **б) Команды руками.**
 
 ```
-claude plugin install jadlis-plugin-creator --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
+claude plugin install jadlis-plugin-builder --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
 claude plugin list
 ```
 
 Первая команда сама добавляет маркетплейс `jadlis`, если его ещё нет, и ставит плагин. Снимается
-плагин одной строкой: `claude plugin uninstall jadlis-plugin-creator@jadlis --keep-data`.
+плагин одной строкой: `claude plugin uninstall jadlis-plugin-builder@jadlis --keep-data`.
 
 Если Claude Code старше 2.1.292 — ключа `--marketplace` у него нет. Тогда выполни две команды:
 первая добавляет маркетплейс, вторая ставит плагин.
 
 ```
 claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
-claude plugin install jadlis-plugin-creator@jadlis
+claude plugin install jadlis-plugin-builder@jadlis
 ```
 
 **в) Короткая команда.** Открой Claude Code в рабочем клоне своего репозитория и набери:
 
 ```
-/plugin-creator <задача>
+/plugin-builder <задача>
 ```
 
-Например: `/plugin-creator проверь плагин перед релизом`. Не находится — сверь имя строкой
+Например: `/plugin-builder проверь плагин перед релизом`. Не находится — сверь имя строкой
 `claude plugin list`. Запускать в клоне маркетплейса под `~/.claude/plugins/marketplaces/` не надо:
 фоновое обновление стирает оттуда правки.
 
@@ -140,12 +140,16 @@ claude plugin install jadlis-plugin-creator@jadlis
 
 ```
 claude plugin marketplace update jadlis
-claude plugin update jadlis-plugin-creator@jadlis
+claude plugin update jadlis-plugin-builder@jadlis
 claude plugin list
 ```
+
+Если у тебя стоял `jadlis-plugin-creator`: плагин переименован в `jadlis-plugin-builder`. После
+`claude plugin marketplace update jadlis` Claude Code покажет строку о переименовании. Затем один раз
+выполни в сессии `/plugin install jadlis-plugin-builder@jadlis`.
 
 Переустановка, если что-то встало криво:
 
 ```
-claude plugin uninstall jadlis-plugin-creator@jadlis --keep-data && claude plugin install jadlis-plugin-creator@jadlis
+claude plugin uninstall jadlis-plugin-builder@jadlis --keep-data && claude plugin install jadlis-plugin-builder@jadlis
 ```
