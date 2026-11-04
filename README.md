@@ -27,6 +27,8 @@ claude plugin install jadlis-plugin-builder@jadlis
 
 Это моё рабочее место, выложенное как есть, а не продукт: чем перестал пользоваться — убрал.
 
+Репозиторий: [github.com/becyb-org/jadlis-plugin-builder](https://github.com/becyb-org/jadlis-plugin-builder).
+
 ## Было → стало
 
 | Руками | Чатом с ИИ | Этим плагином |

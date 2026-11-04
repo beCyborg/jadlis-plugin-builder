@@ -1,6 +1,6 @@
 # plugin.json Manifest Reference
 
-> Last audited against Claude Code docs: 2026-10-17 (v2.1.302, mirror da8a6ce9)
+> Last audited against Claude Code docs: 2026-11-04 (v2.1.318, mirror 8f02c497)
 
 Complete reference for `.claude-plugin/plugin.json` — every field, path resolution, user configuration, dependencies, and path variables.
 
@@ -75,7 +75,7 @@ The plugin `name` rules above don't cover component names. These do (`skills.md 
 | A skill's or plugin file's `name` longer than 256 characters | Ignored | v2.1.292 (changelog 2.1.292) |
 | An agent `name` longer than 256 characters, containing `:`, or starting with `-` | Rejected — a plugin agent then falls back to the file name (`components.md §2`) | 256 cap v2.1.292; `sub-agents.md §Frontmatter reference` |
 
-Keep skill folder names and `name:` to plain kebab-case ASCII. When Claude Code compares skill names it ignores case, spacing and invisible characters (`skills.md` ~286), so look-alike names collide rather than coexist. A folder name that differs from the SKILL.md `name` is listed under both names since v2.1.290 (changelog 2.1.290).
+Keep skill folder names and `name:` to plain kebab-case ASCII. When Claude Code compares skill names it ignores case, spacing and invisible characters (`skills.md` ~289), so look-alike names collide rather than coexist. A folder name that differs from the SKILL.md `name` is listed under both names since v2.1.290 (changelog 2.1.290).
 
 ---
 
@@ -252,6 +252,8 @@ All three are exported as environment variables to hook processes and MCP/LSP su
 | LSP servers | `command`, `args`, `env`, `workspaceFolder` — and, since v2.1.288, `initializationOptions` and `settings` (changelog 2.1.288 fixed literal `${user_config.*}` / `${CLAUDE_PLUGIN_ROOT}` reaching the server there; the docs table still lists only the four fields) |
 
 **Quoting.** Prefer hook exec form with `args` — each path arrives as one argument with no quoting. In shell-form hooks and monitor commands, wrap in double quotes: `"${CLAUDE_PLUGIN_ROOT}"/scripts/process.sh`.
+
+**Windows path separators.** Most substituted paths use forward slashes (`C:/...`), but they keep native **backslashes** in an exec-form hook and in a hook that runs through PowerShell — the default shell on Windows when Git Bash isn't installed (`plugins__manifest-reference.md §Quoting and path separators`, :609). A hook script that splits or compares the path must accept both separators.
 
 **ROOT is ephemeral, DATA persists.** `${CLAUDE_PLUGIN_ROOT}` changes on every update; the old directory lingers only as a grace period — never write state there. `${CLAUDE_PLUGIN_DATA}` survives updates; `{id}` is the plugin identifier with characters outside `a-zA-Z0-9_-` replaced by `-` (`formatter@my-marketplace` → `formatter-my-marketplace`). It is deleted when the plugin is uninstalled from its last scope — `--keep-data` preserves it.
 

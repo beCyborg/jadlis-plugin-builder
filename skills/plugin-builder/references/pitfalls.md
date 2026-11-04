@@ -1,6 +1,6 @@
 # Pitfalls — field-tested traps in plugin authoring and distribution
 
-> Last audited against Claude Code docs: 2026-10-17 (v2.1.302, mirror da8a6ce9)
+> Last audited against Claude Code docs: 2026-11-04 (v2.1.318, mirror 8f02c497)
 
 Battle-tested lessons from operating 10+ marketplaces (beCyborg, 2026-07..09). Each entry: symptom → cause → rule.
 
@@ -60,7 +60,7 @@ Plugin MCP servers are deduplicated by endpoint, not name (`mcp.md §Scope hiera
 
 ## 14. MCP names in agent `tools:` and allow rules match one server only (v2.1.299)
 
-Since v2.1.299 an MCP allow rule or an agent `tools:` entry reaches **only the server whose whole normalized name it spells**: `mcp__a` no longer allows a server named `a__b` or `a_` (changelog 2.1.299). An agent or allow-list that worked on 2.1.298 because a short entry happened to cover a second server loses that server's tools after the upgrade — symptom: the subagent reports the tool missing, or fails to launch when no `tools:` entry resolves (`sub-agents.md §Available tools`). Deny and ask rules got the same whole-name matching for servers with `__` in their name (changelog 2.1.299).
+Since v2.1.299 an MCP allow rule or an agent `tools:` entry reaches **only the server whose whole normalized name it spells**: `mcp__a` no longer allows a server named `a__b` or `a_` (changelog 2.1.299). An agent or allow-list that worked on 2.1.298 because a short entry happened to cover a second server loses that server's tools after the upgrade — symptom: the subagent reports the tool missing, or fails to launch when no `tools:` entry resolves (`sub-agents.md §Available tools`). Deny and ask rules work the other way round: `mcp__reports` and `mcp__reports__v2` as a `deny` or `ask` rule both cover every tool of a server named `reports__v2` (`permissions.md:581-583`; changelog.md:1317 fixed those rules not applying to such servers in 2.1.299), and an agent's `disallowedTools` entry `mcp__reports` also withholds `reports__v2` (`sub-agents.md:494-499`). A short deny entry can therefore block a second server — to cover `reports` alone, list its tools one by one.
 
 **Rule:** list every server by its full name — `mcp__<server>__*` (or `mcp__<server>`) for the whole server, `mcp__<server>__<tool>` for one tool; a server whose name contains `__` only as `mcp__<whole name>__*`. A plugin's own server is `mcp__plugin_<plugin>_<server>__*` (§4). Before a release, check that every `mcp__…` entry in agents and skills' `allowed-tools` spells one whole server name.
 
@@ -70,6 +70,6 @@ Three hook changes turn an old guard into a silent leak or a hard block (`compon
 
 - **Background child.** A command hook that forks a helper and exits loses any decision the helper prints later. A hook that prints an allow and then starts a child with stdout/stderr still attached gets the call **blocked** (`refusing to honor the suspect capture`, `hooks.md §Hooks that start a background process`; since v2.1.285 a sync hook ends shortly after its own process exits, changelog 2.1.285 — the refusal's first version is not stated). Rule: decision first, `|| exit $?`, child with `>/dev/null 2>&1 &`.
 - **`updatedInput` rewrites** are validated since v2.1.300: unknown keys are dropped, input the tool rejects denies the call (changelog 2.1.300). A misspelled key used to reach the tool; now it is dropped silently, and an object the tool rejects fails the call. Return the full, valid argument object.
-- **Many LLM hooks on one event** queue: at most 12 `prompt`/`agent` hooks of one event run at a time (changelog 2.1.302). Expect latency, not errors.
+- **Many LLM hooks** queue. Docs: at most 12 `prompt`/`agent` hooks of one event run at once (`hooks.md:398`, v2.1.302). Changelog 2.1.312: at most 24 at a time per session, subagents included, plus 12 that waited past their event's timeout (changelog.md:439 — docs not yet updated). Expect latency, not errors.
 
 **Rule:** after a CLI upgrade, smoke-test every guard once with a deliberately failing check and once with a passing one, and read the hook error text.

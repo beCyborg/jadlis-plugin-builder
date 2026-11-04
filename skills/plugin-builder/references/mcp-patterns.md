@@ -1,6 +1,6 @@
 # MCP servers in a plugin — patterns for a shared daemon
 
-> Last audited against Claude Code docs: 2026-10-14 (v2.1.300, mirror 305bb5ef)
+> Last audited against Claude Code docs: 2026-11-04 (v2.1.318, mirror 8f02c497)
 
 Use this page when a plugin ships an MCP server that the author (or a power user) wants to run **once per machine as an HTTP daemon**, while ordinary recipients keep a zero-setup default. Basic plugin MCP facts (`.mcp.json`, `.mcpb` bundles, naming) are in `components.md §4`.
 
@@ -10,7 +10,11 @@ Use this page when a plugin ships an MCP server that the author (or a power user
 - **A user-scope server can't shadow a plugin server by name.** Scopes dedupe by name; plugins and claude.ai connectors dedupe **by endpoint** — the same URL or the same command as an enabled server above them counts as a duplicate (`mcp.md §Scope hierarchy and precedence`). Scheme/host letter case, the default port and a trailing slash don't make a new endpoint; a different path, query or port does.
 - **Tool names carry the plugin and server key:** `mcp__plugin_<plugin>_<server>__<tool>` (`plugins__components.md §MCP servers`). Any scheme that adds a second key renames the tools — every skill, hook matcher and permission rule that names them breaks (`pitfalls.md §4`).
 - **A plugin server can be switched off without touching the plugin:** `deniedMcpServers` in user settings blocks matching servers "including plugin servers", merged from every settings scope (`settings-reference.md §deniedMcpServers`). The owner's probe (2026-10-02) found the form `{"serverName": "plugin:<plugin>:<server>"}` works and a bare server key does not. `serverCommand` matches command + args exactly, so a version bump in `args` silently lifts the block.
-- **Stdio is not reconnected.** Claude Code reconnects remote servers; a stdio server that dies stays dead for the session (`mcp.md §Automatic reconnection`).
+- **Stdio restarts depend on how Claude Code runs** (`mcp.md §Stdio servers that exit or fail to start`, :397–405). Claude Code reconnects remote servers on its own (`mcp.md §Automatic reconnection`). A stdio server is different:
+  - **Interactive session:** a stdio server whose process exits, or whose first connection fails, is marked failed; it starts again only from **Reconnect** in `/mcp`.
+  - **`claude -p` and Agent SDK:** a server whose process exits mid-session starts again on the next call to one of its tools, and the call runs once it connects. A failed first connection is not retried in that run.
+  - **A plugin's stdio server that failed to connect** is skipped by new sessions and `-p` runs for 15 minutes (`Skipping connection (recent failure cached…)`, `errors.md:4473–4481`); Reconnect in `/mcp`, or a change to the server's `command`, `args` or `env`, retries sooner (`errors.md:4485–4490`).
+  - **Version probe (v2.1.318):** a stdio server that exits on the version probe is no longer re-probed on every start, and one that dies in under 3 s for its own reason is pinned to the legacy handshake for 7 days (changelog.md:73 — docs not yet updated). A server that crashes on start for a while can stay on the legacy handshake after the fix.
 - **Idle window:** 5 minutes for HTTP/SSE/WS, 30 minutes for stdio, unless the server's `timeout` (≥1000 ms, v2.1.203+) is longer (`mcp.md`, the tips and timeout notes just before §Automatic backgrounding of long tool calls). Long tools behind a daemon need a `timeout` in the server entry.
 
 ## 2. Choosing a pattern
@@ -43,7 +47,7 @@ Default advice: U when the vendor hosts a remote MCP, otherwise L; C only if the
 }
 ```
 
-`bin/mcp-run <name>`: `SHARED_MCP_URL` empty → `exec npx -y <the server package>`; non-empty → `exec` a relay to that URL with `Authorization: Bearer $SHARED_MCP_BEARER` that reconnects on its own (Claude Code won't). The relay is your own small script or an existing client — `mcp-remote` or `mcp-proxy` in client mode are **unverified examples** (not checked or measured). Keep executables out of a top-level `bin/` if the plugin may be distributed through claude.ai organization settings (`components.md §8`).
+`bin/mcp-run <name>`: `SHARED_MCP_URL` empty → `exec npx -y <the server package>`; non-empty → `exec` a relay to that URL with `Authorization: Bearer $SHARED_MCP_BEARER` that reconnects on its own (Claude Code restarts a dead stdio relay only on the next tool call in `-p` / SDK runs, and in an interactive session only from `/mcp` → Reconnect — §1). The relay is your own small script or an existing client — `mcp-remote` or `mcp-proxy` in client mode are **unverified examples** (not checked or measured). Keep executables out of a top-level `bin/` if the plugin may be distributed through claude.ai organization settings (`components.md §8`).
 
 ### `userConfig` for L / U
 
@@ -65,7 +69,7 @@ Default advice: U when the vendor hosts a remote MCP, otherwise L; C only if the
 }
 ```
 
-For U: `"type": "http", "url": "${user_config.firecrawl_mcp_url}", "headers": {"Authorization": "Bearer ${user_config.mcp_bearer}"}` with the vendor URL as `default`. Do **not** use `options` (recipients below v2.1.271 can't load the plugin) or `headersHelper` (it can't see `${user_config.*}` and runs without `*TOKEN*`/`*KEY*`/`*SECRET*` env vars — `mcp.md §Which variables a helper can read`).
+For U: `"type": "http", "url": "${user_config.firecrawl_mcp_url}", "headers": {"Authorization": "Bearer ${user_config.mcp_bearer}"}` with the vendor URL as `default`. Do **not** use `options` (recipients below v2.1.271 can't load the plugin) or `headersHelper` (it can't see `${user_config.*}` and runs without `*TOKEN*`/`*KEY*`/`*SECRET*` env vars — `mcp.md §Which variables a helper can read`; before v2.1.316 a credential-named variable set to a switch value such as `1` also corrupted the helper's `CLAUDE_PLUGIN_ROOT` and server URL, changelog.md:267).
 
 ## 3. Checks before release
 
@@ -73,11 +77,11 @@ preflight (`scripts/preflight_plugin.py`) covers the statically checkable ones (
 
 1. ✓ `claude plugin validate <plugin-dir>` passes — since v2.1.281 it reports entries that would be dropped, undeclared `${user_config.*}`, invalid URLs (`plugins__manifest-reference.md §Validate the manifest`).
 2. ✓ Every `${user_config.X}` in a `url` has a non-empty `default` or `required: true` — otherwise `/mcp` shows `URL is unset or invalid` (observed by probe).
-3. ✓ Every `${VAR}` has `:-default` — otherwise Claude Code warns and uses the literal `${VAR}` text (`mcp.md §Unset variables without a default`); for a plugin server the 2026-10-02 probe saw `✘ Failed to connect — Missing environment variables`.
+3. ✓ Every `${VAR}` has `:-default` — otherwise Claude Code warns and uses the literal `${VAR}` text (`mcp.md §Unset variables without a default`); for a plugin server the 2026-10-02 probe saw `✘ Failed to connect — Missing environment variables`. A variable set to an empty string counts as set: `${VAR:-default}` then expands to the empty string, not to `default` — unset the variable instead (`mcp.md §Variables set to an empty string`, :861).
 4. ✓ No `${user_config.*}` in `headersHelper` (the server is reported misconfigured).
 5. Token variables in `headers` aren't on the "read as empty" credential list (`mcp.md §Credential variables that read as empty`). Prove it live: `claude --plugin-dir . mcp list` → `✔ Connected`.
 6. ✓ No `options` in `userConfig` when recipients may run Claude Code < 2.1.271.
 7. Tool names are identical in every mode: `rg 'mcp__plugin_<plugin>_'` across skills, agents and hooks matches the server keys.
 8. ✓ (within one marketplace) No two servers share an endpoint. Across a plugin and a user-scope server the dedupe is documented; between two plugins it was only observed (one silently vanished, which one is not established).
-9. Long tools: `timeout` in the server entry ≥ the expected run; HTTP idle window is 5 min.
+9. Long tools: `timeout` in the server entry ≥ the expected run; HTTP idle window is 5 min. Mark tools that are safe to repeat with `readOnlyHint` / `idempotentHint` — since v2.1.307 only those are retried after a dropped HTTP connection (`components.md §4`).
 10. Daemon mode: an `initialize` request answers on the URL before the session starts; in L the relay survives a daemon restart.

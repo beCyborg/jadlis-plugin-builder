@@ -1,6 +1,6 @@
 # Plugin Components Reference
 
-> Last audited against Claude Code docs: 2026-10-17 (v2.1.302, mirror da8a6ce9)
+> Last audited against Claude Code docs: 2026-11-04 (v2.1.318, mirror 8f02c497)
 
 Every component type a plugin can ship, the constraints that break plugins in practice, and how files are resolved on disk. Manifest fields and path variables: see `manifest-reference.md`. Mods: `mods.md`. Shared-daemon MCP patterns: `mcp-patterns.md`.
 
@@ -18,7 +18,7 @@ Every component type a plugin can ship, the constraints that break plugins in pr
 | MCP server | Claude needs tools or data from an external system | Remote `https://` also reaches claude.ai/Cowork; shared daemon → `mcp-patterns.md` |
 | Output style | A role, tone or response format for the whole session, switchable | `plugins__components.md §Themes and output styles` |
 | LSP server | Navigation and diagnostics for a typed language — check for an official plugin first | `plugins__components.md §LSP servers` |
-| Monitor | A background command whose stdout should wake Claude (a log, a status) | Interactive sessions only; no `${user_config}`; not on Bedrock / Agent Platform / Foundry (§6) |
+| Monitor | A background command whose stdout should wake Claude (a log, a status) | Interactive sessions only; no `${user_config}`; on Bedrock / Vertex / Foundry or with telemetry off from v2.1.310 (§6) |
 | Channel | An external system pushes messages into an open session (chat bridge) | Research preview; bound to one of the plugin's MCP servers (`manifest-reference.md §8`) |
 | Workflow | Work larger than a few subagents, or with cross-checking | `workflows/`, §8 |
 | `bin/` | Executables the Bash tool calls as bare commands | Rejected by claude.ai org distribution (§8) |
@@ -37,6 +37,8 @@ Every component type a plugin can ship, the constraints that break plugins in pr
 - Set frontmatter `name` on a root `SKILL.md`. Without it the fallback is the **install directory name**, which for a marketplace install is a version string that changes on every update — so `name` is effectively mandatory there.
 - **Boolean frontmatter literals (v2.1.218+):** `disable-model-invocation` and friends accept `yes`, `no`, `on`, `off`, `1`, `0` in any letter case, plus `true`/`false`. Before v2.1.218 only `true`/`false` parsed.
 - Plugin skills are namespaced `plugin-name:skill-name`.
+- **Skill frontmatter hooks are capped per source** (v2.1.304+): the skills of one source — a project, the personal skills folder, or **one plugin** — register at most **1,024 hooks** and **16,384 matcher characters** per session; a matcher with several hooks counts once per hook. A skill past the limit runs without any of its frontmatter hooks, and `/hooks` lists none of them (`hooks.md §Limits on skill hooks`, :686, :691; changelog.md:872). A plugin with many hook-carrying skills shares one budget.
+- **When a skill loses `allowed-tools`.** Under a managed hooks lock (`strictPluginOnlyCustomization` with `hooks`) a personal or project skill whose frontmatter hooks are kept out also loses its `allowed-tools` pre-approval in the main conversation, so users get prompts (v2.1.304, changelog.md:873; `settings-reference.md:4168`); plugin skills keep their frontmatter hooks under that lock (`hooks.md:688`). Under `allowManagedPermissionRulesOnly`, `allowed-tools` is ignored in skills of `@skills-dir` plugins (v2.1.282+) and, since v2.1.305, of `@inline` plugins that the Claude Desktop app mounts by path for a Code or Cowork session (`settings-reference.md:819-830`, changelog.md:808). Marketplace-installed plugins are not on that list.
 
 ## 2. Agents
 
@@ -44,15 +46,15 @@ Every component type a plugin can ship, the constraints that break plugins in pr
 
 | Supported frontmatter | Notes |
 |---|---|
-| `name`, `description` | Namespaced as `my-plugin:code-reviewer` in the @-mention typeahead. `name` ≤ 256 characters, no `:`, not starting with `-` (`sub-agents.md §Frontmatter reference`; the 256 cap is v2.1.292+, changelog 2.1.292) |
+| `name`, `description` | Namespaced as `my-plugin:code-reviewer` in the @-mention typeahead. `name` ≤ 256 characters, no `:`, not starting with `-` (`sub-agents.md §Frontmatter reference`, :298; the 256 cap is v2.1.292+, changelog 2.1.292). A plugin agent's `name` over 256 characters is ignored and the agent is named after its file (`plugins__components.md:326`) |
 | `model`, `effort`, `maxTurns` | Model/effort choice: see skill-builder `references/model-routing.md` |
-| `tools`, `disallowedTools` | MCP entries: an exact tool name, or `mcp__<server>` / `mcp__<server>__*` for a whole server (`sub-agents.md §Available tools`). **Since v2.1.299 an entry reaches only the server whose whole normalized name it spells** — `mcp__a` no longer covers servers `a__b` or `a_`, and a server whose name contains `__` must be listed as `mcp__<whole name>__*` (changelog 2.1.299). For a plugin's own server write `mcp__plugin_<plugin>_<server>__*` (§3) |
+| `tools`, `disallowedTools` | MCP entries: an exact tool name, or `mcp__<server>` / `mcp__<server>__*` for a whole server (`sub-agents.md §Available tools`). **Since v2.1.299 an entry reaches only the server whose whole normalized name it spells** — `mcp__a` no longer covers servers `a__b` or `a_`, and a server whose name contains `__` must be listed as `mcp__<whole name>__*` (changelog 2.1.299). For a plugin's own server write `mcp__plugin_<plugin>_<server>__*` (§3). **`disallowedTools` reaches further:** `mcp__reports` or `mcp__reports__*` withholds the `reports` server **and every tool of a server named `reports__v2`**, because those tool names also start with `mcp__reports__`; to withhold only `reports`, list its tools one by one (`sub-agents.md:494-499`). Permission `deny`/`ask` rules behave the same way (`permissions.md:581-583`) |
 | `skills` | Preloads full skill content — **at most the first 32 distinct names** (v2.1.295+); the rest stay invokable through the Skill tool (`sub-agents.md §Preload skills into subagents`, changelog 2.1.295) |
 | `memory`, `background` | |
 | `omitClaudeMd` | v2.1.271+ |
 | `color`, `experimental.cacheTtl` | |
 | `isolation` | **Only** valid value is `"worktree"` |
-| `autoCompactWindow` | v2.1.296+: a token count `100000`–`1000000` that makes this subagent auto-compact earlier than the window it inherits; listed among the supported plugin-agent fields (`plugins__components.md §Frontmatter fields in plugin agents`, `sub-agents.md §Set the auto-compact window for one subagent`). Write a plain integer — `200k` reads as 200, is out of range and is ignored (`claude --debug` logs `invalid autoCompactWindow`). `CLAUDE_CODE_AUTO_COMPACT_WINDOW` overrides it, and it has no effect when the whole session runs as the agent (`--agent`) |
+| `autoCompactWindow` | v2.1.296+: a token count `100000`–`1000000` that makes this subagent auto-compact earlier than the window it inherits; listed among the supported plugin-agent fields (`plugins__components.md §Frontmatter fields in plugin agents`, `sub-agents.md §Set the auto-compact window for one subagent`). Write a plain integer — `200k` reads as 200, is out of range and is ignored (`claude --debug` logs `invalid autoCompactWindow`). **With `CLAUDE_CODE_AUTO_COMPACT_WINDOW` set, docs and changelog differ:** the docs say the subagent uses the variable's window and the field has no effect (`sub-agents.md:1197`); the changelog says that since v2.1.312 the field lowers the variable's window and still never raises it (changelog.md:440 — docs not yet updated). Either way the field can only make the subagent compact earlier. It has no effect when the whole session runs as the agent (`--agent` or the `agent` setting, `sub-agents.md:1214`) |
 
 **Ignored in plugin agents: `permissionMode`, `hooks`, `mcpServers`, `initialPrompt`** (`plugins__components.md §Agents`). The agent loads with those fields dropped — add hooks and MCP servers as plugin components instead, and don't ship an agent whose behaviour depends on them.
 
@@ -65,9 +67,15 @@ Every component type a plugin can ship, the constraints that break plugins in pr
 | No `name` | Named after the file: `agents/reviewer.md` in `my-plugin` → `my-plugin:reviewer` |
 | Frontmatter doesn't parse | Named after the file, description becomes `Agent from my-plugin plugin`, **every field in the file is ignored** |
 
-Project, user, and managed agents are *skipped* in both cases. So a plugin agent with a typo'd frontmatter loads silently with none of its settings applied — find these with `claude plugin validate ./my-plugin` (with a manifest) or `claude plugin validate ./my-plugin/agents` (no manifest, v2.1.233+). A field name Claude Code doesn't recognize is ignored without an error (`sub-agents.md §Frontmatter reference`); since v2.1.296 the debug log names up to five unrecognized top-level fields with the likely intended name — search `~/.claude/debug/<session-id>.txt` for `does not recognize or apply` (`sub-agents.md §Supported frontmatter fields`).
+Project, user, and managed agents are *skipped* in both cases. So a plugin agent with a typo'd frontmatter loads silently with none of its settings applied — find these with `claude plugin validate ./my-plugin` (with a manifest) or `claude plugin validate ./my-plugin/agents` (no manifest, v2.1.233+). A field name Claude Code doesn't recognize is ignored without an error (`sub-agents.md §Frontmatter reference`); since v2.1.296 the debug log names up to five unrecognized top-level fields with the likely intended name — search `~/.claude/debug/<session-id>.txt` for `does not recognize or apply` (`sub-agents.md §Frontmatter reference`, :293).
 
-**Fork subagents in headless runs (v2.1.302).** Fork mode (`subagent_type: "fork"`) is now on by default in `claude -p`, the Agent SDK, the desktop app and VS Code, as it already was in the terminal; `CLAUDE_CODE_FORK_SUBAGENT=0` turns it off (changelog 2.1.302 — the mirror's `sub-agents.md §Turn fork mode on or off` still says off in `-p`/SDK). Where fork mode is on, subagents run in the background. For a plugin this changes headless smoke tests and `claude plugin eval` runs: Claude can fork the conversation instead of calling your agent, so pin the behaviour you score (`release-checklist.md §5b`).
+**Fork subagents in headless runs (v2.1.302).** Fork mode (`subagent_type: "fork"`) is on by default from v2.1.302 in `claude -p`, the Agent SDK, the desktop app and VS Code, and in an interactive terminal from v2.1.232 (`sub-agents.md §Turn fork mode off`, :1278; changelog 2.1.302). `CLAUDE_CODE_FORK_SUBAGENT=0` turns fork mode off; `"Agent(fork)"` in `permissions.deny` stops only forks (:1275–1276). While fork mode is on, Claude can't wait for a subagent in interactive terminal, VS Code or desktop sessions (:1278). For a plugin this changes headless smoke tests and `claude plugin eval` runs: Claude can fork the conversation instead of calling your agent, so pin the behaviour you score (`release-checklist.md §5b`).
+
+**Subagent effort and model switches.** These change what a plugin agent without its own `effort` runs at:
+
+- `CLAUDE_CODE_SUBAGENT_EFFORT` (v2.1.316+) sets the effort subagents run at when nothing else names one, instead of inheriting the session's (changelog.md:225 — docs not yet updated).
+- Since v2.1.317 a subagent on a different model from the main conversation uses that model's saved effort level or its default, not the session's (changelog.md:133). The docs say the same in short: on another model the session's level doesn't apply, so set `effort` to pick one (`sub-agents.md:421`, `model-config.md:705`).
+- With **Switch models when a message is flagged** = **Ask each time** (`switchModelsOnFlag: false`), subagents **stop** instead of switching models since v2.1.318 (changelog.md:34 — docs not yet updated: `model-config.md:569` still says a subagent's flagged request re-runs on the fallback model). An agent that must finish should not rely on the fallback.
 
 ## 3. Hooks
 
@@ -104,7 +112,7 @@ Classic hooks need the **outer `{"hooks": …}` wrapper** — the config is not 
 
 **Hook types (5):** `command` (shell), `http` (POSTs the event JSON), `mcp_tool` (calls a tool on a configured MCP server), `prompt` (LLM evaluation, `$ARGUMENTS` placeholder), `agent` (agentic verifier with tools).
 
-**Fail closed with `onFailure: "block"`** (v2.1.295+, `command` and `http` hooks only; `hooks.md §Block the action when a hook fails`, lines ~904–950). By default (`"continue"`) a hook that fails or times out lets the action through, so a guard with a wrong path or a crashing script guards nothing (`hooks.md` ~866, ~878). With `"block"`, each of these counts as a failure and acts like exit code 2 on that event (on `PermissionRequest` it denies): the hook can't start; a command hook exits with a code other than 0 or 2 (even if it printed an allowing JSON); an HTTP error or non-2xx; a timeout; output that fails JSON parsing or schema validation. It has **no effect** on `Stop`, `SubagentStop`, `TaskCompleted`, `TeammateIdle`, or on `async`/`asyncRewake` command hooks. Older CLIs don't know the field — a guard that must fail closed on them still needs its own error handling.
+**Fail closed with `onFailure: "block"`** (v2.1.295+, `command` and `http` hooks only; `hooks.md §Block the action when a hook fails`, lines ~902–955). By default (`"continue"`) a hook that fails or times out lets the action through, so a guard with a wrong path or a crashing script guards nothing (`hooks.md` ~869, ~879). With `"block"`, each of these counts as a failure and acts like exit code 2 on that event (on `PermissionRequest` it denies): the hook can't start; a command hook exits with a code other than 0 or 2 (even if it printed an allowing JSON); an HTTP error or non-2xx; a timeout; output that fails JSON parsing or schema validation. It has **no effect** on `Stop`, `SubagentStop`, `TaskCompleted`, `TeammateIdle`, or on `async`/`asyncRewake` command hooks. Older CLIs don't know the field — a guard that must fail closed on them still needs its own error handling.
 
 ```json
 { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/guard.js"], "onFailure": "block" }
@@ -114,13 +122,17 @@ Classic hooks need the **outer `{"hooks": …}` wrapper** — the config is not 
 
 **Rewriting tool input (v2.1.300).** `updatedInput` from `PreToolUse` and `PermissionRequest` hooks is validated like Claude's own input: unknown keys are dropped, and input the tool rejects **denies the call** (changelog 2.1.300; not yet in `hooks.md`). Return the tool's full, valid argument object: a misspelled key is now dropped silently, and an object the tool rejects fails the call.
 
-**Concurrency (v2.1.302).** At most 12 `prompt` / `agent` hooks of one event run at a time; the rest wait their turn (changelog 2.1.302). A plugin that adds many LLM-judged hooks to one event slows that event down rather than failing.
+**Concurrency — docs and changelog differ.** Docs: when more than 12 matching hooks of one event are `prompt` / `agent` hooks, 12 run at once and the rest start as running ones finish; a waiting hook's `timeout` counts from its own start (`hooks.md:398`; v2.1.302). Changelog 2.1.312: `prompt` / `agent` hooks run at most **24 at a time per session**, subagents included, plus at most 12 that have waited longer than their event's timeout; a `timeout` under 1 second counts as 1 second (changelog.md:439 — docs not yet updated). Either way a plugin that adds many LLM-judged hooks slows the event down rather than failing.
+
+**PreCompact output is cut at 10,000 characters** per hook since v2.1.314; very large output used to make compaction fail or repeat (changelog.md:357 — docs not yet updated).
 
 **Other behaviour that changed:**
 
 - `PreToolUse` / `PermissionRequest` hooks whose matching fails, or whose tool input can't be serialized to JSON, now block the call instead of being skipped (changelog 2.1.288).
 - `UserPromptSubmit` runs before a skill or custom command expands, so blocking `/my-skill` also stops its `` !`cmd` `` injections; the hook sees the line as typed — match the skill's name or arguments with `UserPromptExpansion` (`hooks.md §UserPromptSubmit`, changelog 2.1.299). A skill's own frontmatter `UserPromptSubmit` hook first runs on the prompt **after** the one that invoked the skill (changelog 2.1.299).
 - A plugin's `UserPromptSubmit` hook (like `Stop`, `SubagentStop`, `TaskCompleted`) that exits 2 with empty stdout and a missing-file message on stderr counts as a non-blocking error, not a block (`hooks.md §Exit code output`) — a mistyped script path never blocks the prompt.
+- Skill frontmatter hooks have a per-source budget, a plugin being one source (v2.1.304+, §1).
+- Hooks that match Bash also run on the Monitor tool's shell commands (v2.1.314, §6).
 - Agent hooks honour their own `model` since v2.1.300 (aliases resolve; an unavailable model falls back to the caller's instead of allowing the action).
 - Mods differ: an action a hooks-module hook can block is refused, not let through, when the hook can't be handed the event or can't answer (changelog 2.1.299, `mods.md §4`).
 
@@ -144,6 +156,10 @@ A matcher written against the bare server key **never fires**. Since v2.1.299 MC
 - Path variables and `${user_config.*}` resolve only in `command`/`args`/`env` (stdio) and `url`/`headers`/`headersHelper` (http/sse/ws) — see `manifest-reference.md §10`; `headersHelper` rejects `${user_config.*}`.
 - `.mcpb` bundles: extracted into `.mcpb-cache/` under the plugin root; a bundle's own settings are set at install with `claude plugin install --config <server>.<key>=<value>` (v2.1.285+) or `/plugin` → Configure (`plugins__components.md §Include a packaged MCPB server`).
 - `"type": "sdk"` entries are skipped with a warning (v2.1.274+) — only an SDK host can register in-process servers.
+- **Mark tools that are safe to repeat.** Since v2.1.307 an HTTP MCP tool call that was pending when the connection closed is repeated once, on a new connection, only for tools marked `readOnlyHint` or `idempotentHint` in `tools/list` (`mcp.md §Mark tools that are safe to call twice`, :1628–1633; changelog.md:764). Other calls can fail with `connection closed before the tool call was answered` — annotate a plugin server's safe tools. `readOnlyHint` also lets Claude Code run the tool in parallel with other read-only calls.
+- **MCP tasks** (public beta, v2.1.304+): a server that uses the MCP tasks extension runs a long job itself; the tool call returns once the job is accepted, the job shows in `/tasks`, and a task on a remote server keeps running after exit (`mcp.md §MCP tasks that run on the server`, :485–493).
+- **Synced plugins in cloud sessions** (v2.1.304): a new conversation's first turn no longer waits for the stdio servers of plugins synced from claude.ai, unless the server sets `alwaysLoad: true` (changelog.md:884 — docs not yet updated). Set `alwaysLoad` only on a server the first turn really needs.
+- `headersHelper` of a plugin MCP server got a corrupted `CLAUDE_PLUGIN_ROOT` and server URL when a credential-named environment variable held a switch value such as `1`; fixed in v2.1.316 (changelog.md:267).
 - `claude plugin validate` checks plugin MCP entries since v2.1.281: dropped entries, undeclared `${user_config.*}`, invalid URLs (errors); `http://`/`ws://` to non-loopback hosts and literal-looking credentials in headers (warnings).
 
 ## 5. LSP servers
@@ -152,7 +168,7 @@ A matcher written against the bare server key **never fires**. Since v2.1.299 MC
 
 **Required:** `command` (binary, must be in PATH) and `extensionToLanguage` (extension → language id).
 
-**Optional:** `args`, `transport`, `env`, `initializationOptions`, `settings`, `workspaceFolder`, `startupTimeout`, `shutdownTimeout`, `restartOnCrash` (default `true`), `maxRestarts`, `diagnostics` (default `true`), `requestTimeout` (ms, default `60000`; **v2.1.288+** — a request the server never answers fails after that; `plugins__manifest-reference.md §lspServers`, ~line 338). LSP configs are strict objects (`manifest-reference.md §5`), so on an older CLI the key is presumably an unknown key that stops the plugin loading (inference, not tested) — gate it like `restartOnCrash` below.
+**Optional:** `args`, `transport`, `env`, `initializationOptions`, `settings`, `workspaceFolder`, `startupTimeout`, `shutdownTimeout`, `restartOnCrash` (default `true`), `maxRestarts`, `diagnostics` (default `true`), `requestTimeout` (ms, default `60000`; **v2.1.288+** — a request the server never answers fails after that; `plugins__manifest-reference.md §lspServers`, ~line 340). LSP configs are strict objects (`manifest-reference.md §5`), so on an older CLI the key is presumably an unknown key that stops the plugin loading (inference, not tested) — gate it like `restartOnCrash` below.
 
 - `transport` accepts `socket`, but **every server actually runs over stdio**, so the stdout rules below apply universally.
 - `restartOnCrash` and `shutdownTimeout` require **v2.1.205+**. Before that the schema accepted them but setting either made Claude Code skip the server entirely, visible only in `claude --debug`.
@@ -167,12 +183,15 @@ Background commands started automatically while the plugin is active; every stdo
 
 **Location:** `monitors/monitors.json` (a JSON array), or `experimental.monitors` in `plugin.json` as the same array **or** a relative path string (`"./config/monitors.json"`).
 
-- **Interactive CLI sessions only**, unsandboxed, at the same trust level as hooks; skipped where the Monitor tool is unavailable, and not on Amazon Bedrock, Google Cloud's Agent Platform, or Microsoft Foundry (`plugins__manifest-reference.md §Fields`).
+- **Interactive CLI sessions only** — monitors don't start with `-p` (`plugins__components.md §Monitors`, :587); unsandboxed, at the same trust level as hooks.
+- **Bedrock / Vertex / Foundry and telemetry off: v2.1.310+.** On Amazon Bedrock, Claude Platform on AWS, Google Cloud's Agent Platform or Microsoft Foundry, or with `DISABLE_TELEMETRY` or `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` set, monitors need v2.1.310 or later when feature-flag fetching is off (`plugins__components.md:588`; changelog.md:591 added the Monitor tool and plugin monitors there). State that minimum in the README of a plugin with monitors.
+- **`allowManagedHooksOnly` blocks them** (v2.1.310+): a plugin's monitors don't start unless managed settings force-enable the plugin (`settings-reference.md §What runs under allowManagedHooksOnly`, :3583).
 - Required: `name` (unique within the plugin — prevents duplicate processes on reload), `command` (persistent background process in the session cwd), `description` (shown in the task panel and notification summaries).
 - Optional `when`: `"always"` (default — session start and plugin reload) or `"on-skill-invoke:<skill-name>"` (first dispatch of that skill).
 - `command` supports `${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}`, `${CLAUDE_PROJECT_DIR}` and any `${ENV_VAR}`. Prefix `cd "${CLAUDE_PLUGIN_ROOT}" && ` when the script must run from the plugin directory.
 - **`${user_config.*}` is rejected** in monitor commands, and monitor processes get **no** `CLAUDE_PLUGIN_OPTION_*` variables — have the script read a config file it owns.
-- Disabling the plugin mid-session does **not** stop already-running monitors; they end with the session.
+- Disabling the plugin mid-session does **not** stop already-running monitors; they end with the session. Since v2.1.317 exiting no longer asks "Background work is running" for plugin monitors (changelog.md:134 — docs not yet updated).
+- **Hooks see monitor commands** (v2.1.314, changelog — docs not yet updated): hooks that match Bash also run on shell commands the Monitor tool starts and can block or ask, but not approve or rewrite them (changelog.md:368); an `if` condition such as `Monitor(tail *)` matches the Monitor tool's commands the way `Bash(tail *)` matches Bash's (changelog.md:310). A plugin's own Bash guard can therefore stop its monitor.
 
 ## 7. Themes (experimental)
 
@@ -181,7 +200,7 @@ JSON files in `themes/`: a `base` preset plus a sparse `overrides` map of color 
 ## 8. Workflows, bin/, settings.json
 
 - **`workflows/`** — workflow script files. The `workflows` manifest key *replaces* this default.
-- **`bin/`** — executables added to the Bash tool's `PATH`, callable as bare commands while the plugin is enabled. **Forbidden in org distribution:** claude.ai rejects any plugin with a top-level `bin/` whether it arrives by marketplace sync or direct upload, with `Plugin contains a top-level bin/ directory` (marketplace sync rejects that plugin and syncs the rest). Put executables in `scripts/` and reference them as `${CLAUDE_PLUGIN_ROOT}/scripts/<name>` (`plugins__host-marketplace.md §Distribute through organization settings`).
+- **`bin/`** — executables added to the Bash tool's `PATH`, callable as bare commands while the plugin is enabled. A command Claude runs with the PowerShell tool **outside the sandbox** finds them on its `PATH` too; a sandboxed PowerShell command doesn't (`plugins__components.md:474`, `plugins__security.md:33`). **Forbidden in org distribution:** claude.ai rejects any plugin with a top-level `bin/` whether it arrives by marketplace sync or direct upload, with `Plugin contains a top-level bin/ directory` (marketplace sync rejects that plugin and syncs the rest). Put executables in `scripts/` and reference them as `${CLAUDE_PLUGIN_ROOT}/scripts/<name>` (`plugins__host-marketplace.md §Distribute through organization settings`).
 - **`settings.json`** at the plugin root — only `agent` and `subagentStatusLine`; see `manifest-reference.md §11`.
 
 ---
@@ -283,8 +302,10 @@ Any folder under a skills directory containing `.claude-plugin/plugin.json` load
 
 | Skills directory | Scope | Loads |
 |---|---|---|
-| `~/.claude/skills/` | personal | Everywhere; no extra restrictions |
+| `~/.claude/skills/` | personal | Everywhere, unless managed settings block skills-directory plugins (below) |
 | `<cwd>/.claude/skills/` | project | Only after the workspace trust dialog for that folder |
+
+**Silently blocked by managed settings.** Claude Code skips `@skills-dir` plugins from both directories — no plugin and no error in `/plugin` or `claude plugin list`, and its commands, agents, hooks and MCP servers are missing — when managed settings set `strictPluginOnlyCustomization` (`true` or any surface), a `strictKnownMarketplaces` allowlist (even an empty one) without a `{ "source": "skills-dir" }` entry, or a `blockedMarketplaces` list with that entry (`plugins__loading.md §Skills-directory plugins blocked by managed settings`, :95–102; `settings-reference.md:4019`, :4125). Unless skills are locked, a root `SKILL.md` in the folder still loads as a plain skill (:104). `/status` listing `Enterprise managed settings` under `Setting sources` is the first check (:106). For an organization's users, ship through a marketplace instead (`marketplace-ops.md §9`).
 
 Project scope is restricted further: MCP servers go through the same per-server approval as a project `.mcp.json`, LSP servers start only after trust, and **background monitors do not load at all**.
 

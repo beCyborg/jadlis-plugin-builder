@@ -26,7 +26,7 @@ Checks (E = error, W = warning):
   E description 10-2000 chars (I3); E entry name ~ ^[a-z0-9][a-z0-9-]{1,63}$ (I11)
   E external source URL shape (I4); E external source carries 40-hex sha (I5)
   E no shell metacharacters in source fields (I9); E no invisible Unicode (I10)
-  E marketplace name charset / reserved marketplace names
+  E marketplace name charset / reserved marketplace names (incl. JS object member names)
   E plugin name reserved (claude-*, anthropic-*, anthropics-*, cc-plugin-*, ...); W reads as Anthropic's
   W marketplace entry name differs from plugin.json name
   E plugin settings.json keys subset of {agent, subagentStatusLine}
@@ -74,6 +74,13 @@ RESERVED_MARKETPLACE_NAMES = {
     "anthropic-plugin-directory", "claude-plugin-directory",
     "inline", "builtin", "skills-dir", "synced", "claude-plugin-test",
     "npm", "pip", "uv", "cargo", "github", "gh",
+}
+# plugins__marketplace-reference.md:50 (Reserved names): member names every JavaScript
+# object has. Compared case-sensitively against the original name, so kept apart from
+# RESERVED_MARKETPLACE_NAMES, which is matched against the lowercased name.
+JS_OBJECT_MEMBER_NAMES = {
+    "constructor", "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable",
+    "toLocaleString", "toString", "valueOf",
 }
 MARKETPLACE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 # plugins__mods__reference.md, Files
@@ -224,6 +231,9 @@ def check_repo(root: Path, validate: bool = True):
         canon = re.sub(r"[^a-z0-9_]+", "-", low).strip("-")
         if low in RESERVED_MARKETPLACE_NAMES or canon in RESERVED_MARKETPLACE_NAMES or low.startswith("claudeai-"):
             issues.append(("E", f"marketplace name '{mk_name}' is reserved"))
+        if mk_name in JS_OBJECT_MEMBER_NAMES:
+            issues.append(("E", f"marketplace name '{mk_name}' is reserved (JavaScript object member "
+                                f"name; `marketplace add` refuses it)"))
 
     entries = mk.get("plugins", [])
     names = [e.get("name", "") for e in entries]

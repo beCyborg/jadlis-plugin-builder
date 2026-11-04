@@ -102,6 +102,21 @@ def test_reserved_name_rules():
     assert pf.plugin_name_issue("jadlis-search") is None
 
 
+def test_js_object_member_marketplace_names_rejected(tmp_path):
+    # plugins__marketplace-reference.md, Reserved names: `marketplace add` refuses these
+    names = ["constructor", "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable",
+             "toLocaleString", "toString", "valueOf"]
+    for name in names:
+        root = tmp_path / name
+        make_marketplace(root)
+        mk_path = root / ".claude-plugin" / "marketplace.json"
+        mk = json.loads(mk_path.read_text())
+        mk["name"] = name
+        mk_path.write_text(json.dumps(mk))
+        errs = errors(pf.check_repo(root, validate=False))
+        assert any(f"marketplace name '{name}'" in e and "reserved" in e for e in errs), name
+
+
 def test_plugin_dir_mode(tmp_path):
     (tmp_path / ".claude-plugin").mkdir()
     (tmp_path / "LICENSE").write_text("MIT")

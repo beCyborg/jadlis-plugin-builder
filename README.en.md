@@ -28,6 +28,8 @@ plugin installed.
 
 This is my workbench published as it is, not a product: whatever I stopped using, I removed.
 
+Repository: [github.com/becyb-org/jadlis-plugin-builder](https://github.com/becyb-org/jadlis-plugin-builder).
+
 ## Before → after
 
 | By hand | With an AI chat | With this plugin |
