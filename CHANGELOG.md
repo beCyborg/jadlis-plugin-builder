@@ -1,5 +1,19 @@
 # Changelog — jadlis-plugin-builder
 
+## [3.1.1] — 2026-11-06 — репозиторий снова на GitHub beCyborg / repository back on GitHub beCyborg
+
+### Для человека
+
+- Плагин снова живёт на GitHub: https://github.com/beCyborg/jadlis-plugin-builder. Каталог ставится командой `claude plugin marketplace add https://github.com/beCyborg/jadlis-hub.git`.
+- Работа плагина не изменилась, поменялись только адреса.
+
+### For agents
+
+- Changed: README pair, `.claude-plugin/plugin.json` homepage/repository — GitLab/becyb-org → `github.com/beCyborg`; GitHub redirects the old `beCyborg/jadlis-plugin-creator` URL.
+- Changed: `skills/plugin-builder/references/marketplace-ops.md` — house marketplace `jadlis` is added from `https://github.com/beCyborg/jadlis-hub.git`.
+- Changed: CI `.gitlab-ci.yml` → `.github/workflows/ci.yml` (reusable `beCyborg/jadlis-hub` plugin-ci).
+- Changed: `.claude-plugin/plugin.json` version 3.1.0 → 3.1.1.
+
 ## [3.1.0] — 2026-11-04 — сверка с Claude Code 2.1.318, основной дом на GitHub / audit to Claude Code 2.1.318, GitHub becomes the primary home
 
 ### Для человека

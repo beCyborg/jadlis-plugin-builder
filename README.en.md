@@ -7,13 +7,13 @@ version in exactly one place, changelog, tag, release and an install into a clea
 the recipient gets the line they have to run on their side.
 
 ```
-claude plugin install jadlis-plugin-builder --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
+claude plugin install jadlis-plugin-builder --marketplace https://github.com/beCyborg/jadlis-hub.git
 ```
 
 On Claude Code older than 2.1.292, run two commands instead:
 
 ```
-claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
+claude plugin marketplace add https://github.com/beCyborg/jadlis-hub.git
 claude plugin install jadlis-plugin-builder@jadlis
 ```
 
@@ -28,7 +28,7 @@ plugin installed.
 
 This is my workbench published as it is, not a product: whatever I stopped using, I removed.
 
-Repository: [github.com/becyb-org/jadlis-plugin-builder](https://github.com/becyb-org/jadlis-plugin-builder).
+Repository: [github.com/beCyborg/jadlis-plugin-builder](https://github.com/beCyborg/jadlis-plugin-builder).
 
 ## Before → after
 
@@ -74,9 +74,9 @@ errors and warnings, with the fix on each one.
 You are the installer. Install the plugin jadlis-plugin-builder from the jadlis marketplace on this Mac.
 Run exactly these commands, verbatim, shortening nothing:
 1. claude --version — if the version is below 2.1.292, run these two commands instead of step 2:
-   claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
+   claude plugin marketplace add https://github.com/beCyborg/jadlis-hub.git
    claude plugin install jadlis-plugin-builder@jadlis
-2. claude plugin install jadlis-plugin-builder --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
+2. claude plugin install jadlis-plugin-builder --marketplace https://github.com/beCyborg/jadlis-hub.git
 3. claude plugin list — show me the line about jadlis-plugin-builder and its version.
 This plugin asks for no keys. Check separately and tell me whether this machine has git,
 python3 and an authenticated gh (gh auth status): without them the tag, release and
@@ -89,7 +89,7 @@ If a command returns an error, stop, show me the output, and do not move to the 
 **b) Commands by hand.**
 
 ```
-claude plugin install jadlis-plugin-builder --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
+claude plugin install jadlis-plugin-builder --marketplace https://github.com/beCyborg/jadlis-hub.git
 claude plugin list
 ```
 
@@ -100,7 +100,7 @@ Claude Code older than 2.1.292 has no `--marketplace` flag. There, run two comma
 the marketplace, the second installs the plugin.
 
 ```
-claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
+claude plugin marketplace add https://github.com/beCyborg/jadlis-hub.git
 claude plugin install jadlis-plugin-builder@jadlis
 ```
 

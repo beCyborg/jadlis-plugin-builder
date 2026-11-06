@@ -7,13 +7,13 @@
 строка, которую он выполняет у себя.
 
 ```
-claude plugin install jadlis-plugin-builder --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
+claude plugin install jadlis-plugin-builder --marketplace https://github.com/beCyborg/jadlis-hub.git
 ```
 
 Если Claude Code старше 2.1.292 — выполни две команды:
 
 ```
-claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
+claude plugin marketplace add https://github.com/beCyborg/jadlis-hub.git
 claude plugin install jadlis-plugin-builder@jadlis
 ```
 
@@ -27,7 +27,7 @@ claude plugin install jadlis-plugin-builder@jadlis
 
 Это моё рабочее место, выложенное как есть, а не продукт: чем перестал пользоваться — убрал.
 
-Репозиторий: [github.com/becyb-org/jadlis-plugin-builder](https://github.com/becyb-org/jadlis-plugin-builder).
+Репозиторий: [github.com/beCyborg/jadlis-plugin-builder](https://github.com/beCyborg/jadlis-plugin-builder).
 
 ## Было → стало
 
@@ -70,9 +70,9 @@ validate --strict`, бамп версии с changelog, тег и релиз, п
 Ты — установщик. Поставь на этот Mac плагин jadlis-plugin-builder из маркетплейса jadlis.
 Выполни ровно эти команды, дословно, ничего не сокращая:
 1. claude --version — если версия ниже 2.1.292, вместо шага 2 выполни две команды:
-   claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
+   claude plugin marketplace add https://github.com/beCyborg/jadlis-hub.git
    claude plugin install jadlis-plugin-builder@jadlis
-2. claude plugin install jadlis-plugin-builder --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
+2. claude plugin install jadlis-plugin-builder --marketplace https://github.com/beCyborg/jadlis-hub.git
 3. claude plugin list — покажи мне строку про jadlis-plugin-builder и его версию.
 Ключей этот плагин не просит. Проверь и скажи мне отдельно, есть ли на машине git,
 python3 и gh с авторизацией (gh auth status): без них шаги тега, релиза и проверочной
@@ -85,7 +85,7 @@ python3 и gh с авторизацией (gh auth status): без них шаг
 **б) Команды руками.**
 
 ```
-claude plugin install jadlis-plugin-builder --marketplace https://gitlab.com/beCyborg/jadlis-hub.git
+claude plugin install jadlis-plugin-builder --marketplace https://github.com/beCyborg/jadlis-hub.git
 claude plugin list
 ```
 
@@ -96,7 +96,7 @@ claude plugin list
 первая добавляет маркетплейс, вторая ставит плагин.
 
 ```
-claude plugin marketplace add https://gitlab.com/beCyborg/jadlis-hub.git
+claude plugin marketplace add https://github.com/beCyborg/jadlis-hub.git
 claude plugin install jadlis-plugin-builder@jadlis
 ```
 
