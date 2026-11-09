@@ -20,6 +20,8 @@ git -C ~/.claude-code-docs log -1 --format=%cs
 
 Skim `changelog.md` for releases newer than the audit markers in your references, and update any `> Last audited …` line you touch. Doc-derived claims carry version gates (`v2.1.233+`, `v2.1.239+`, …); a stale gate is a bug report from a user on an older CLI.
 
+In the same pass re-pin the CLI the CI installs — the `claude-cli-version` input of the validate action; for the house repos it is the default in `jadlis-hub/.github/workflows/plugin-ci.yml`, which every plugin repo calls. Why: "CI: the official validate-plugins action" below, "A stale pin is a break too".
+
 ## 2. Make the content changes
 
 In the dev clone only (Rule 0). Keep component files at the **plugin root** — only `plugin.json` (and `marketplace.json`, when the repo is also the marketplace) belong in `.claude-plugin/` (a mod's generated `.claude-plugin/types/` is the exception — `mods.md §1`).
@@ -156,6 +158,8 @@ Keep that line in the README and repeat it in the release notes. Point users at 
 - `name` matching `^[a-z0-9][a-z0-9-]{1,63}$`
 
 *(verified against live anthropics repos, 2026-09-01)* **Pin both the action SHA and the `claude-cli-version` input.** An unpinned action is an unreviewed executable in your release path, and an unpinned CLI turns a Claude Code release into a surprise CI break — or a surprise pass.
+
+**A stale pin is a break too.** A pinned CLI older than a manifest field a plugin uses fails a valid plugin: 2.1.263 rejected `userConfig` `options` (needs v2.1.271, `plugins__manifest-reference.md:438`) with `userConfig.<key>: Invalid input`, and a catalog CI that validated every entry on each push stayed red for three days (2026-11-07..09). Re-pin at every references audit, and give the marketplace job a full-history checkout (`fetch-depth: 0`) so the action validates only the changed entries. A private repository in a public catalog needs a read-only deploy key as a secret of the catalog repo, or its clone fails every run that touches it.
 
 Also *(verified against live anthropics repos, 2026-09-01)*: **the validator is not the loader.** These invariants and `claude plugin validate` can both be green while the plugin fails to load in a session. Add to CI, after the action: `scripts/preflight_plugin.py` (it covers JSON parse, `.lsp.json` and mods, which validate skips or reads only partly — validate itself checks MCP entries since v2.1.281), and the step-11 smoke install against a throwaway `CLAUDE_CONFIG_DIR` with one sentinel skill invocation.
 

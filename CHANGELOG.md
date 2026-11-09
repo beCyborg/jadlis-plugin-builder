@@ -1,5 +1,17 @@
 # Changelog — jadlis-plugin-builder
 
+## [3.2.1] — 2026-11-09 — правило: поднимать версию Claude Code в CI при каждой сверке / rule: re-pin the CI's Claude Code at every audit
+
+### Для человека
+
+- В чек-листе релиза появилось правило: при каждой сверке справочников поднимать версию Claude Code, которую ставит CI. Старая версия отклоняла исправный плагин, и каталог три дня слал письма о провале проверки.
+- Там же записано, как держать приватный плагин в публичном каталоге: CI нужен ключ только на чтение.
+
+### For agents
+
+- Added: `skills/plugin-builder/references/release-checklist.md` — §1 re-pin step (the `claude-cli-version` input; house default in `jadlis-hub/.github/workflows/plugin-ci.yml`); section "CI: the official validate-plugins action" — "A stale pin is a break too": 2.1.263 vs `userConfig` `options` (v2.1.271, `plugins__manifest-reference.md:438`), `fetch-depth: 0` for changed-only validation, read-only deploy key for a private entry.
+- Changed: `.claude-plugin/plugin.json` version 3.2.0 → 3.2.1.
+
 ## [3.2.0] — 2026-11-09 — сверка с Claude Code 2.1.321, правила работы под Fable 5.2 / audit to Claude Code 2.1.321, run rules for Fable 5.2
 
 ### Для человека
