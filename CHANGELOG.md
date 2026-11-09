@@ -1,5 +1,25 @@
 # Changelog — jadlis-plugin-builder
 
+## [3.2.0] — 2026-11-09 — сверка с Claude Code 2.1.321, правила работы под Fable 5.2 / audit to Claude Code 2.1.321, run rules for Fable 5.2
+
+### Для человека
+
+- Я сверил справочники с Claude Code 2.1.321. Скилл знает новые правила модов, хуков и MCP-задач. Он также знает, как `claude plugin validate` определяет тип файла манифеста.
+- Скилл доводит начатый режим до конца и не бросает релиз на полпути. Перед архивацией репозитория и перед удалением ветки, тега или релиза он спрашивает.
+- Исправлена старая ошибка в справочнике про LSP: одна неверная запись отключает весь `.lsp.json`, а не один сервер.
+
+### For agents
+
+- Added: `SKILL.md` — ground rule 5 "Finish the mode you started" (obstacles are worked through; the go-ahead list is archiving a repository and deleting a branch, tag or release); Validate step 5: called from Assemble, fix the E findings in the scaffold the run created (Anthropic, "Prompting Claude Fable 5.2", sections "Finish the whole task" and "Keep caution from piling up", read 2026-11-09).
+- Changed: `components.md` — subagent behaviour under "Ask each time" now cited from docs (`model-config.md §Subagents switch or fail without asking`, live :585–592; docs-vs-changelog caveat dropped) and the 2.1.319 retry-narrower message (`changelog.md:52`); §1 nested `.claude/skills` inside `~/.claude/plugins` no longer load (changelog 2.1.321), sandbox rule (`changelog.md:49`); §3 PreCompact output from docs (`hooks.md:3367–3369`), "PostToolUse after an interrupt" (v2.1.319, `hooks.md:2233–2243`), `defer` rules and `CLAUDE_CODE_DROP_UNAVAILABLE_DEFERRED_TOOL` (`hooks.md:2107–2118`, `env-vars.md:281`), `AskUserQuestion`/`ExitPlanMode` need `updatedInput` (`hooks.md:2028–2036`), no hooks under `--bare` (`headless.md:61`), `auth_storage_failure` (`hooks.md:2519`), `mcp_tool` hook answers over 16 MiB refuse the call (changelog 2.1.321); §4 full MCP tool name ≤ 128 chars incl. the plugin prefix (`errors.md:2601–2615`), cloud tool counts (`mcp.md:309–315`); §6 Monitor matching from docs (`hooks.md:388–396`).
+- Fixed: `components.md §5` — one invalid entry skips the whole `.lsp.json` (`plugins__components.md:457`); the earlier "invalid server skipped, others start" had no source. Extension-conflict and missing-binary wording per :461–462.
+- Changed: `mods.md` — mods Claude writes turn on without asking in auto/bypass modes and don't load in `dontAsk`; a mod's own `$.tool.call`/`$.mcp.call` raise no prompt while deny rules and organization policy apply; headless reload of `.claude/skills` mods and `CLAUDE_CODE_PLUGIN_DIR_WATCH=0` (changelog 2.1.321; `env-vars.md:356`); hot-reload fixes (`changelog.md:119,140`); mods are outside the Bash sandbox (`sandboxing.md:44`); `§8` extended to 2.1.321.
+- Changed: `mcp-patterns.md` — "Long jobs as MCP tasks" (terminal backgrounding since 2.1.319, `CLAUDE_CODE_DISABLE_MCP_TASK_BACKGROUND`; docs and changelog versions both kept), what a task answer must hold (`mcp.md:597–625`, v2.1.317), 7-day probe skip for stdio servers now from docs (`mcp.md:364`).
+- Changed: `marketplace-ops.md §9` (`--add-dir` marketplaces register after that directory's trust dialog — `changelog.md:48`; managed `extraKnownMarketplaces` take-over rules and `claude plugin restore-set-aside` — changelog 2.1.321), `release-checklist.md` ("Validate a manifest file" — `plugins__cli-reference.md:634–642`; `tool_used` `min: 0` + `max: 0` — `changelog.md:116`; a new `dependencies` entry as recipient migration; no `--bare` in smoke runs; SDK `reloadPlugins()`), `manifest-reference.md` (Bamum-letter names refused; update and auto-update install added dependencies — `changelog.md:117,157`; `${CLAUDE_PLUGIN_ROOT}` in a plugin `subagentStatusLine` — `changelog.md:156`; a plugin can't switch auto mode's server check back on — `changelog.md:43`).
+- Changed: `page.md:line` citations re-derived at mirror 39e6937e (en-dash ranges and bare `, :NNN` continuations fixed by hand); audit markers → 2026-11-09 (v2.1.321, mirror 39e6937e) in all eight references, `repo-standard.md` and `pitfalls.md` re-checked with no fact changed.
+- Unchanged: `scripts/preflight_plugin.py` and its tests (the Bamum-letter refusal is a skill/command-name rule; preflight checks plugin and marketplace names).
+- Changed: `.claude-plugin/plugin.json` version 3.1.1 → 3.2.0.
+
 ## [3.1.1] — 2026-11-06 — репозиторий снова на GitHub beCyborg / repository back on GitHub beCyborg
 
 ### Для человека

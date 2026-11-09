@@ -51,6 +51,12 @@ inline — git/gh operations are sequential and state-heavy; no subagents in v1.
    block) lives in references/repo-standard.md — every mode targets it.
 4. Facts about manifests/components/marketplaces: do not answer from memory —
    open the matching reference (below) or the official docs mirror.
+5. **Finish the mode you started.** A failing command, a timeout or a red CI
+   job is an obstacle: diagnose it and work through it. A Release stopped
+   halfway leaves a tag without its release — carry the spine to its end.
+   Stop only for a deliberate blocker (a protected branch, access withheld on
+   purpose) or before these, which need the user's go-ahead in this run:
+   archiving a repository, deleting a branch, a tag or a release.
 
 | Question about… | Reference |
 |---|---|
@@ -114,8 +120,9 @@ Goal: existing work (skills/hooks/MCP/agents) → a repo matching repo-standard.
 4. Runtime layer (validate ≠ loader): smoke-install into a clean env
    (`cd /tmp && claude -p` with `--plugin-dir`), invoke a sentinel skill,
    `claude plugin details <name>` for the token inventory.
-5. Report findings grouped E/W with the fix per finding; do not auto-fix
-   without being asked.
+5. Report findings grouped E/W with the fix per finding. Run on its own,
+   Validate does not auto-fix unless asked; called from Assemble, fix the E
+   findings in the scaffold this run created, then re-run.
 
 `{PLUGIN_ROOT}` = this plugin's root; when running from a dev clone use the
 relative `scripts/` path.

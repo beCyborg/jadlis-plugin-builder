@@ -1,6 +1,6 @@
 # Repo standard — the house GitHub standard for plugin/marketplace repos
 
-> Last audited against Claude Code docs: 2026-10-14 (v2.1.300, mirror 305bb5ef)
+> Last audited against Claude Code docs: 2026-11-09 (v2.1.321, mirror 39e6937e)
 
 Canonical norms for every beCyborg plugin/marketplace repository. Assemble mode scaffolds to this standard; Validate mode checks against it; Migrate mode brings legacy repos up to it. Sources: official Claude Code docs + live anthropics repos (validate-plugins action, claude-plugins-official workflows), verified 2026-09-01.
 

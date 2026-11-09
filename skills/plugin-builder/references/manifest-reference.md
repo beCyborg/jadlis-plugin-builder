@@ -1,6 +1,6 @@
 # plugin.json Manifest Reference
 
-> Last audited against Claude Code docs: 2026-11-04 (v2.1.318, mirror 8f02c497)
+> Last audited against Claude Code docs: 2026-11-09 (v2.1.321, mirror 39e6937e)
 
 Complete reference for `.claude-plugin/plugin.json` — every field, path resolution, user configuration, dependencies, and path variables.
 
@@ -72,6 +72,7 @@ The plugin `name` rules above don't cover component names. These do (`skills.md 
 |---|---|---|
 | A skill or command **file or folder name** with a zero-width, control, private-use/unassigned or direction-changing character, a blank other than one plain space between words, `<` or `>` | The skill or command **doesn't load** until renamed — this includes a plugin's `commands/*.md` file. **Exception:** a folder in a plugin's `skills/` (or a manifest `skills` path) still loads, with those characters **turned into hyphens** in its command name | v2.1.299 (changelog 2.1.299) |
 | A frontmatter `name:` with the same characters | The skill loads, but its `name` is **refused**: the `/` menu doesn't show it and typing it doesn't invoke the skill. Find refusals with `claude --debug` → search the log for `[names]` | v2.1.299 |
+| A skill or command name holding a Bamum letter that some fonts draw as blank | Refused | v2.1.321 (changelog 2.1.321; not in `skills.md §Characters a skill name can't hold`) |
 | A skill's or plugin file's `name` longer than 256 characters | Ignored | v2.1.292 (changelog 2.1.292) |
 | An agent `name` longer than 256 characters, containing `:`, or starting with `-` | Rejected — a plugin agent then falls back to the file name (`components.md §2`) | 256 cap v2.1.292; `sub-agents.md §Frontmatter reference` |
 
@@ -220,6 +221,7 @@ An entry is a bare name string, or an object (`plugins__dependencies.md §Declar
 - **Bundle pattern:** a manifest of only `name` + `dependencies` installs a curated plugin set behind one `claude plugin install`.
 - **Cross-marketplace:** blocked by default. The **root** marketplace (the one hosting the plugin being installed) must list the target in `allowCrossMarketplaceDependenciesOn`; trust does not chain through intermediate marketplaces. Otherwise install fails with a `cross-marketplace` error naming the field.
 - **Intersecting ranges:** several plugins constraining the same dependency resolve to the highest version satisfying all. Incompatible ranges → `range-conflict` and the *new* install fails, leaving existing plugins untouched. Uninstalling the last constraining plugin releases the dependency back to tracking its marketplace.
+- **Dependencies added by an update.** Since v2.1.319 `claude plugin update`, `/plugin` → Update now and background auto-update install a dependency that the new plugin version adds; before that fix they didn't (changelog.md:157, :117). Tell recipients on older CLIs to install the new dependency themselves (`release-checklist.md §7`).
 - **Non-git sources** (`npm`, `archive`, `command`): the constraint doesn't select the version, but is checked at load — a mismatch disables the plugin with `dependency-version-unsatisfied`.
 
 | Error | Meaning |
@@ -270,3 +272,5 @@ A `settings.json` at the plugin root — or the inline manifest key `settings` �
 ```
 
 `agent` activates one of the plugin's own agents as the **main thread**, applying its system prompt, tool restrictions, and model. `settings.json` takes priority over a `settings` key declared in `plugin.json`.
+
+Since v2.1.319 `${CLAUDE_PLUGIN_ROOT}` is substituted in a plugin-provided `subagentStatusLine` command, so it can run the plugin's own scripts (changelog.md:156); on older CLIs the placeholder stays literal there. Also since v2.1.319 a plugin — like a project's settings files — can no longer switch auto mode's server-side check back on once the user switched it off outside the project (changelog.md:43).
